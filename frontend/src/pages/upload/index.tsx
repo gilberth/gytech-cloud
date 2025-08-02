@@ -1,10 +1,11 @@
-import { Button, Group } from "@mantine/core";
+import { Button, Group, Stack, Text, Paper, useMantineTheme } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { cleanNotifications } from "@mantine/notifications";
 import { AxiosError } from "axios";
 import pLimit from "p-limit";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { FormattedMessage } from "react-intl";
+import { TbClipboard } from "react-icons/tb";
 import Meta from "../../components/Meta";
 import Dropzone from "../../components/upload/Dropzone";
 import FileList from "../../components/upload/FileList";
@@ -63,11 +64,13 @@ const Upload = ({
   const modals = useModals();
   const router = useRouter();
   const t = useTranslate();
+  const theme = useMantineTheme();
 
   const { user } = useUser();
   const config = useConfig();
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [isUploading, setisUploading] = useState(false);
+  const [pasteAreaFocused, setPasteAreaFocused] = useState(false);
 
   useConfirmLeave({
     message: t("upload.notify.confirm-leave"),
@@ -196,7 +199,7 @@ const Upload = ({
         const defaultShare: CreateShare = {
           id: await generateAvailableLink(config.get("share.shareIdLength")),
           name: undefined,
-          expiration: "1-days", // Default 1 day expiration
+          expiration: "never", // Default never expires
           recipients: [],
           description: undefined,
           security: {
@@ -258,6 +261,61 @@ const Upload = ({
     }
   }, [files]);
 
+  // Handle clipboard paste
+  const handlePaste = useCallback(async (e: ClipboardEvent) => {
+    e.preventDefault();
+    
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+    
+    if (imageItems.length === 0) {
+      toast.error(t("upload.notify.no-image-in-clipboard") || "No se encontraron imágenes en el portapapeles");
+      return;
+    }
+
+    const newFiles: FileUpload[] = [];
+    
+    for (const item of imageItems) {
+      const file = item.getAsFile();
+      if (file) {
+        // Generate a filename based on timestamp and type
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const extension = file.type.split('/')[1] || 'png';
+        const filename = `pasted-image-${timestamp}.${extension}`;
+        
+        // Create a new File object with the generated name
+        const renamedFile = new File([file], filename, { type: file.type }) as FileUpload;
+        renamedFile.uploadingProgress = 0;
+        newFiles.push(renamedFile);
+      }
+    }
+    
+    if (newFiles.length > 0) {
+      toast.success(t("upload.notify.image-pasted") || `${newFiles.length} imagen(es) pegada(s) desde el portapapeles`);
+      handleDropzoneFilesChanged(newFiles);
+    }
+  }, [config, t, handleDropzoneFilesChanged]);
+
+  // Add paste event listener
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // Only handle paste if the paste area is focused or no input is focused
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        (activeElement as HTMLElement).contentEditable === 'true'
+      );
+      
+      if (!isInputFocused || pasteAreaFocused) {
+        handlePaste(e);
+      }
+    };
+
+    document.addEventListener('paste', handleGlobalPaste);
+    return () => document.removeEventListener('paste', handleGlobalPaste);
+  }, [handlePaste, pasteAreaFocused]);
+
   return (
     <>
       <Meta title={t("upload.title")} />
@@ -272,6 +330,68 @@ const Upload = ({
           </Button>
         </Group>
       )}
+      
+      {/* Clipboard paste area */}
+      <Stack spacing="md" mb="md">
+        <Paper
+          p="md"
+          withBorder
+          sx={(theme) => ({
+            backgroundColor: theme.colorScheme === 'dark' 
+              ? (pasteAreaFocused ? theme.colors.dark[6] : theme.colors.dark[7])
+              : (pasteAreaFocused ? theme.colors.gray[0] : theme.colors.gray[1]),
+            borderColor: theme.colorScheme === 'dark'
+              ? (pasteAreaFocused ? theme.colors.dark[4] : theme.colors.dark[5])
+              : (pasteAreaFocused ? theme.colors.gray[4] : theme.colors.gray[3]),
+            borderStyle: 'dashed',
+            borderWidth: 1,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              backgroundColor: theme.colorScheme === 'dark' 
+                ? theme.colors.dark[6] 
+                : theme.colors.gray[0],
+              borderColor: theme.colorScheme === 'dark'
+                ? theme.colors.dark[4]
+                : theme.colors.gray[4],
+            }
+          })}
+          tabIndex={0}
+          onFocus={() => setPasteAreaFocused(true)}
+          onBlur={() => setPasteAreaFocused(false)}
+          onClick={() => {
+            // Focus the element to enable paste detection
+            const element = document.activeElement as HTMLElement;
+            if (element) {
+              element.focus();
+            }
+          }}
+        >
+          <Group spacing="sm" position="center">
+            <TbClipboard 
+              size={24} 
+              color={
+                theme.colorScheme === 'dark'
+                  ? (pasteAreaFocused ? theme.colors.dark[3] : theme.colors.dark[2])
+                  : (pasteAreaFocused ? theme.colors.gray[6] : theme.colors.gray[5])
+              }
+            />
+            <Stack spacing={4} align="center">
+              <Text
+                size="sm"
+                weight={500}
+                color={pasteAreaFocused ? undefined : 'dimmed'}
+              >
+                Pegar imágenes desde el portapapeles
+              </Text>
+              <Text size="xs" color="dimmed">
+                Haz clic aquí y presiona Ctrl+V (Cmd+V en Mac) para pegar imágenes
+              </Text>
+            </Stack>
+          </Group>
+        </Paper>
+      </Stack>
+      
       <Dropzone
         title={
           !autoOpenCreateUploadModal && files.length > 0

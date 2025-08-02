@@ -48,6 +48,10 @@ const remove = async (id: string) => {
   await api.delete(`shares/${id}`);
 };
 
+const update = async (id: string, updateData: any): Promise<Share> => {
+  return (await api.patch(`shares/${id}`, updateData)).data;
+};
+
 const getMyShares = async (): Promise<MyShare[]> => {
   return (await api.get("shares")).data;
 };
@@ -150,6 +154,7 @@ export default {
   get,
   getFromOwner,
   remove,
+  update,
   getMetaData,
   doesFileSupportPreview,
   getMyShares,

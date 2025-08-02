@@ -22,6 +22,7 @@ import { TbEdit, TbInfoCircle, TbLink, TbLock, TbTrash, TbFile, TbFileText, TbPh
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import showShareInformationsModal from "../../components/account/showShareInformationsModal";
+import showShareEditModal from "../../components/account/showShareEditModal";
 import showShareLinkModal from "../../components/account/showShareLinkModal";
 import CenterLoader from "../../components/core/CenterLoader";
 import useConfig from "../../hooks/config.hook";
@@ -183,11 +184,23 @@ const MyShares = () => {
                   </td>
                   <td>
                     <Group position="right">
-                      <Link href={`/share/${share.id}/edit`}>
-                        <ActionIcon color="orange" variant="light" size={25}>
-                          <TbEdit />
-                        </ActionIcon>
-                      </Link>
+                      <ActionIcon
+                        color="orange"
+                        variant="light"
+                        size={25}
+                        onClick={() => {
+                          showShareEditModal(
+                            modals,
+                            share,
+                            () => {
+                              // Refresh shares after edit
+                              shareService.getMyShares().then((shares) => setShares(shares));
+                            }
+                          );
+                        }}
+                      >
+                        <TbEdit />
+                      </ActionIcon>
                       <ActionIcon
                         color="blue"
                         variant="light"

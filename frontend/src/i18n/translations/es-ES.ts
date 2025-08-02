@@ -218,6 +218,8 @@ export default {
   "upload.notify.confirm-leave": "¿Estás seguro de que quieres salir de esta página? Tu subida será cancelada.",
   "upload.notify.generic-error": "Ha ocurrido un error mientras se compartía tu archivo.",
   "upload.notify.count-failed": "No se pudo cargar {count} archivos. Intentando nuevamente.",
+  "upload.notify.no-image-in-clipboard": "No se encontraron imágenes en el portapapeles",
+  "upload.notify.image-pasted": "Imagen(es) pegada(s) desde el portapapeles",
   "upload.reverse-share.error.invalid.title": "Enlace de uso compartido inverso inválido",
   "upload.reverse-share.error.invalid.description": "Este enlace de uso compartido inverso ha caducado o no es válido.",
   // Dropzone.tsx
