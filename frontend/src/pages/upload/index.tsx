@@ -24,6 +24,33 @@ const promiseLimit = pLimit(3);
 let errorToastShown = false;
 let createdShare: Share;
 
+const generateShareId = (length: number = 16) => {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  const randomArray = new Uint8Array(length >= 3 ? length : 3);
+  crypto.getRandomValues(randomArray);
+  randomArray.forEach((number) => {
+    result += chars[number % chars.length];
+  });
+  return result;
+};
+
+const generateAvailableLink = async (
+  shareIdLength: number,
+  times: number = 10,
+): Promise<string> => {
+  if (times <= 0) {
+    throw new Error("Could not generate available link");
+  }
+  const _link = generateShareId(shareIdLength);
+  if (!(await shareService.isShareIdAvailable(_link))) {
+    return await generateAvailableLink(shareIdLength, times - 1);
+  } else {
+    return _link;
+  }
+};
+
 const Upload = ({
   maxShareSize,
   isReverseShare = false,
@@ -51,6 +78,14 @@ const Upload = ({
 
   maxShareSize ??= parseInt(config.get("share.maxSize"));
   const autoOpenCreateUploadModal = config.get("share.autoOpenShareModal");
+  // Safe access to new config option with fallback
+  let autoUploadFiles = false;
+  try {
+    autoUploadFiles = config.get("share.autoUploadFiles") === true;
+  } catch (e) {
+    // Config option doesn't exist yet, use default
+    autoUploadFiles = true; // Default to automatic upload
+  }
 
   const uploadFiles = async (share: CreateShare, files: FileUpload[]) => {
     setisUploading(true);
@@ -151,11 +186,35 @@ const Upload = ({
     );
   };
 
-  const handleDropzoneFilesChanged = (files: FileUpload[]) => {
-    if (autoOpenCreateUploadModal) {
+  const handleDropzoneFilesChanged = async (files: FileUpload[]) => {
+    if (autoUploadFiles) {
+      // Fully automatic upload - no modal, no button, just upload immediately
+      setFiles((oldArr) => [...oldArr, ...files]);
+      
+      try {
+        // Create default share and upload automatically
+        const defaultShare: CreateShare = {
+          id: await generateAvailableLink(config.get("share.shareIdLength")),
+          name: undefined,
+          expiration: "1-days", // Default 1 day expiration
+          recipients: [],
+          description: undefined,
+          security: {
+            password: undefined,
+            maxViews: undefined,
+          },
+        };
+        
+        // Start upload immediately with new files
+        uploadFiles(defaultShare, files);
+      } catch (error) {
+        toast.error(t("upload.notify.generic-error"));
+      }
+    } else if (autoOpenCreateUploadModal) {
       setFiles(files);
       showCreateUploadModalCallback(files);
     } else {
+      // Normal behavior - show files and require "Compartir" button click
       setFiles((oldArr) => [...oldArr, ...files]);
     }
   };
@@ -202,15 +261,17 @@ const Upload = ({
   return (
     <>
       <Meta title={t("upload.title")} />
-      <Group position="right" mb={20}>
-        <Button
-          loading={isUploading}
-          disabled={files.length <= 0}
-          onClick={() => showCreateUploadModalCallback(files)}
-        >
-          <FormattedMessage id="common.button.share" />
-        </Button>
-      </Group>
+      {!autoUploadFiles && (
+        <Group position="right" mb={20}>
+          <Button
+            loading={isUploading}
+            disabled={files.length <= 0}
+            onClick={() => showCreateUploadModalCallback(files)}
+          >
+            <FormattedMessage id="common.button.share" />
+          </Button>
+        </Group>
+      )}
       <Dropzone
         title={
           !autoOpenCreateUploadModal && files.length > 0

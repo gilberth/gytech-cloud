@@ -12,7 +12,7 @@ export const configVariables = {
   general: {
     appName: {
       type: "string",
-      defaultValue: "Pingvin Share",
+      defaultValue: "GYTECH Cloud",
       secret: false,
     },
     appUrl: {
@@ -73,6 +73,11 @@ export const configVariables = {
     autoOpenShareModal: {
       type: "boolean",
       defaultValue: "false",
+      secret: false,
+    },
+    autoUploadFiles: {
+      type: "boolean", 
+      defaultValue: "true",
       secret: false,
     },
   },
