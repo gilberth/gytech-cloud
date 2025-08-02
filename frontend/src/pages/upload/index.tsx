@@ -5,7 +5,7 @@ import { AxiosError } from "axios";
 import pLimit from "p-limit";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FormattedMessage } from "react-intl";
-import { TbClipboard } from "react-icons/tb";
+import { TbClipboard, TbShare } from "react-icons/tb";
 import Meta from "../../components/Meta";
 import Dropzone from "../../components/upload/Dropzone";
 import FileList from "../../components/upload/FileList";
@@ -316,11 +316,42 @@ const Upload = ({
     return () => document.removeEventListener('paste', handleGlobalPaste);
   }, [handlePaste, pasteAreaFocused]);
 
+  const handleQuickShare = async () => {
+    if (files.length === 0) return;
+    
+    try {
+      const defaultShare: CreateShare = {
+        id: await generateAvailableLink(config.get("share.shareIdLength")),
+        name: files.length === 1 ? files[0].name : `${files.length} archivos`,
+        expiration: "7-days", // Quick share defaults to 7 days
+        recipients: [],
+        description: undefined,
+        security: {
+          password: undefined,
+          maxViews: undefined,
+        },
+      };
+      
+      uploadFiles(defaultShare, files);
+    } catch (error) {
+      toast.error(t("upload.notify.generic-error"));
+    }
+  };
+
   return (
     <>
       <Meta title={t("upload.title")} />
       {!autoUploadFiles && (
-        <Group position="right" mb={20}>
+        <Group position="right" mb={20} spacing="sm">
+          <Button
+            variant="light"
+            loading={isUploading}
+            disabled={files.length <= 0}
+            onClick={handleQuickShare}
+            leftIcon={<TbShare size={16} />}
+          >
+            Compartir Rápido
+          </Button>
           <Button
             loading={isUploading}
             disabled={files.length <= 0}
