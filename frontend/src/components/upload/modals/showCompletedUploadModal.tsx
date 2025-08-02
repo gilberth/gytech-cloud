@@ -31,11 +31,45 @@ const Body = ({ share }: { share: CompletedShare }) => {
 
   const isReverseShare = !!router.query["reverseShareToken"];
 
-  const link = `${window.location.origin}/s/${share.id}`;
+  // Generate direct download URLs instead of shortened share URL
+  const generateDirectLinks = () => {
+    const baseUrl = `${window.location.origin}/api/shares/${share.id}/files`;
+    
+    // If only one file, provide direct file download URL with filename
+    // If multiple files, use ZIP download
+    if (share.files?.length === 1) {
+      const file = share.files[0];
+      // Create friendly URL with filename
+      const encodedFilename = encodeURIComponent(file.name);
+      return `${baseUrl}/${file.id}/${encodedFilename}`;
+    } else {
+      return `${baseUrl}/zip`;
+    }
+  };
+
+  const link = generateDirectLinks();
 
   return (
     <Stack align="stretch">
       <CopyTextField link={link} />
+      
+      {/* Show download info */}
+      <Text
+        size="sm"
+        sx={(theme) => ({
+          color:
+            theme.colorScheme === "dark"
+              ? theme.colors.blue[4]
+              : theme.colors.blue[6],
+          fontWeight: 500,
+        })}
+      >
+        {share.files?.length === 1 
+          ? `📄 Descarga directa: ${share.files[0].name}`
+          : `📦 Descarga ZIP (${share.files?.length || 0} archivos)`
+        }
+      </Text>
+      
       {share.notifyReverseShareCreator === true && (
         <Text
           size="sm"

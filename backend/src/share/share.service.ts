@@ -184,15 +184,16 @@ export class ShareService {
       });
     }
 
-    const updatedShare = await this.prisma.share.update({
+    await this.prisma.share.update({
       where: { id },
       data: { uploadLocked: true },
     });
 
+    // Return the original share data (which includes files) with the notification flag
     return {
-      ...updatedShare,
+      ...share,
       notifyReverseShareCreator,
-    };
+    } as any;
   }
 
   async revertComplete(id: string) {

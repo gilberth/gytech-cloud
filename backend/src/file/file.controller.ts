@@ -64,6 +64,19 @@ export class FileController {
     return new StreamableFile(zipStream);
   }
 
+  @Get(":fileId/:filename")
+  @UseGuards(FileSecurityGuard)
+  async getFileWithName(
+    @Res({ passthrough: true }) res: Response,
+    @Param("shareId") shareId: string,
+    @Param("fileId") fileId: string,
+    @Param("filename") filename: string,
+    @Query("download") download = "true",
+  ) {
+    // Same implementation as getFile, filename is just for SEO/UX
+    return this.getFileImplementation(res, shareId, fileId, download);
+  }
+
   @Get(":fileId")
   @UseGuards(FileSecurityGuard)
   async getFile(
@@ -71,6 +84,15 @@ export class FileController {
     @Param("shareId") shareId: string,
     @Param("fileId") fileId: string,
     @Query("download") download = "true",
+  ) {
+    return this.getFileImplementation(res, shareId, fileId, download);
+  }
+
+  private async getFileImplementation(
+    res: Response,
+    shareId: string,
+    fileId: string,
+    download: string = "true",
   ) {
     const file = await this.fileService.get(shareId, fileId);
 
