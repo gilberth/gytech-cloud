@@ -19,7 +19,6 @@ import { ReverseShareService } from "src/reverseShare/reverseShare.service";
 import { parseRelativeDateToAbsolute } from "src/utils/date.util";
 import { SHARE_DIRECTORY } from "../constants";
 import { CreateShareDTO } from "./dto/createShare.dto";
-import { UpdateShareDTO } from "./dto/updateShare.dto";
 
 @Injectable()
 export class ShareService {
@@ -185,16 +184,21 @@ export class ShareService {
       });
     }
 
-    await this.prisma.share.update({
+    const updatedShare = await this.prisma.share.update({
       where: { id },
       data: { uploadLocked: true },
     });
 
-    // Return the original share data (which includes files) with the notification flag
+    // Get share with files for response
+    const shareWithFiles = await this.prisma.share.findUnique({
+      where: { id },
+      include: { files: true },
+    });
+
     return {
-      ...share,
+      ...shareWithFiles,
       notifyReverseShareCreator,
-    } as any;
+    };
   }
 
   async revertComplete(id: string) {
@@ -284,74 +288,6 @@ export class ShareService {
       throw new NotFoundException("Share not found");
 
     return share;
-  }
-
-  async update(shareId: string, updateData: UpdateShareDTO) {
-    // Check if share exists and user has permission
-    const existingShare = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      include: { security: true },
-    });
-
-    if (!existingShare) {
-      throw new NotFoundException("Share not found");
-    }
-
-    // Prepare update data
-    const updateShare: any = {};
-    const updateSecurity: any = {};
-    let hasSecurityUpdates = false;
-
-    // Update basic fields
-    if (updateData.name !== undefined) {
-      updateShare.name = updateData.name;
-    }
-
-    if (updateData.description !== undefined) {
-      updateShare.description = updateData.description;
-    }
-
-    // Handle expiration
-    if (updateData.expiration !== undefined) {
-      if (updateData.expiration === "never") {
-        updateShare.expiration = new Date(0);
-      } else {
-        updateShare.expiration = parseRelativeDateToAbsolute(updateData.expiration);
-      }
-    }
-
-    // Handle security updates
-    if (updateData.security) {
-      hasSecurityUpdates = true;
-      
-      if (updateData.security.password) {
-        updateSecurity.password = await argon.hash(updateData.security.password);
-      }
-
-      if (updateData.security.maxViews !== undefined) {
-        updateSecurity.maxViews = updateData.security.maxViews;
-      }
-    }
-
-    // Update the share
-    await this.prisma.share.update({
-      where: { id: shareId },
-      data: {
-        ...updateShare,
-        ...(hasSecurityUpdates && {
-          security: existingShare.security
-            ? {
-                update: updateSecurity,
-              }
-            : {
-                create: updateSecurity,
-              },
-        }),
-      },
-    });
-
-    // Return the updated share using the existing get method which has proper DTO formatting
-    return this.get(shareId);
   }
 
   async remove(shareId: string, isDeleterAdmin = false) {

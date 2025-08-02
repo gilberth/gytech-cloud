@@ -37,6 +37,7 @@ GYTECH Cloud is a self-hosted file sharing platform and an alternative for WeTra
 - **One-click sharing**: Select files and they upload automatically with default settings
 - **No more modal dialogs**: Streamlined workflow removes the need for manual confirmation
 - **Instant feedback**: Real-time upload progress and completion notifications
+- **Clipboard paste support**: Paste images directly from clipboard (Ctrl+V/Cmd+V) with automatic upload detection
 
 ### Enhanced Download Experience  
 - **Friendly URLs**: Download links now include actual filenames for better user experience
@@ -53,6 +54,13 @@ GYTECH Cloud is a self-hosted file sharing platform and an alternative for WeTra
   - 📄 **Blue** for documents (txt, md, rtf, etc.)
   - 📁 **Gray** for other file types
 - **Improved table layout**: Removed clutter, focus on file names and visual identification
+
+### Clipboard Integration
+- **Paste area**: Dedicated clipboard paste zone in the upload interface
+- **Smart detection**: Automatically detects images copied to clipboard
+- **Instant upload**: Pasted images upload immediately with auto-generated timestamps
+- **Multi-image support**: Handle multiple images pasted simultaneously
+- **Global paste handling**: Works anywhere on the upload page when no input field is focused
 
 ## ⌨️ Setup
 

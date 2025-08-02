@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -29,6 +30,7 @@ import { ShareOwnerGuard } from "./guard/shareOwner.guard";
 import { ShareSecurityGuard } from "./guard/shareSecurity.guard";
 import { ShareTokenSecurity } from "./guard/shareTokenSecurity.guard";
 import { ShareService } from "./share.service";
+import { UpdateShareDTO } from "./dto/updateShare.dto";
 import { CompletedShareDTO } from "./dto/shareComplete.dto";
 @Controller("shares")
 export class ShareController {
@@ -96,6 +98,12 @@ export class ShareController {
   @UseGuards(ShareOwnerGuard)
   async revertComplete(@Param("id") id: string) {
     return new ShareDTO().from(await this.shareService.revertComplete(id));
+  }
+
+  @Patch(":id")
+  @UseGuards(ShareOwnerGuard)
+  async update(@Param("id") id: string, @Body() body: UpdateShareDTO) {
+    return new ShareDTO().from(await this.shareService.update(id, body));
   }
 
   @Delete(":id")

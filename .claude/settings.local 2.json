@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(conda create:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(pkill:*)",
+      "Bash(PORT=4001 npm run dev)",
+      "Bash(lsof:*)",
+      "Bash(kill:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 5 npm run dev)",
+      "Bash(for file in *.ts)",
+      "Bash(do sed -i '' 's/Pingvin Share/GYTECH Cloud/g' \"$file\")",
+      "Bash(done)",
+      "Bash(sed:*)",
+      "Bash(rm:*)",
+      "Bash(npx prisma db seed:*)",
+      "Bash(sqlite3:*)"
+    ],
+    "deny": []
+  }
+}
