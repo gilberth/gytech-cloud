@@ -148,8 +148,8 @@ const Share = ({ shareId }: { shareId: string }) => {
     0,
   ) || 0;
 
-  const imageFiles = share?.files?.filter(file => isImageFile(file.name)) || [];
-  const nonImageFiles = share?.files?.filter(file => !isImageFile(file.name)) || [];
+  const imageFiles = share?.files?.filter((file: any) => isImageFile(file.name)) || [];
+  const nonImageFiles = share?.files?.filter((file: any) => !isImageFile(file.name)) || [];
 
   return (
     <>

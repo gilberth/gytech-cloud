@@ -167,6 +167,8 @@ const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps)
               placeholder="Selecciona fecha y hora"
               {...form.getInputProps("expiration")}
               minDate={new Date()}
+              onPointerEnterCapture={undefined}
+              onPointerLeaveCapture={undefined}
             />
           )}
         </Box>
