@@ -15,7 +15,8 @@ const withPWA = require("next-pwa")({
 });
 
 module.exports = withPWA({
-  output: "standalone", env: {
+  output: "standalone",
+  env: {
     VERSION: version,
   },
 });

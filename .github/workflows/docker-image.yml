@@ -24,6 +24,15 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
+      
+    - name: Verify files
+      run: |
+        echo "=== Project structure ==="
+        ls -la
+        echo "=== Frontend package.json ==="
+        cat frontend/package.json | head -20
+        echo "=== Backend package.json ==="
+        cat backend/package.json | head -20
 
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request'
@@ -50,7 +59,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
