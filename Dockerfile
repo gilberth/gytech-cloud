@@ -10,6 +10,10 @@ WORKDIR /opt/app
 COPY ./frontend .
 COPY --from=frontend-dependencies /opt/app/node_modules ./node_modules
 RUN npm run build
+RUN echo "=== Frontend build contents ===" && \
+    ls -la .next/standalone/ && \
+    echo "=== Check server.js ===" && \
+    ls -la .next/standalone/server.js || echo "server.js not found"
 
 # Stage 3: Backend dependencies
 FROM node:22-alpine AS backend-dependencies
