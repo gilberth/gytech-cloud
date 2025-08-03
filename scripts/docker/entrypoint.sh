@@ -42,8 +42,41 @@ fi
 # Run the frontend server
 echo "Starting frontend server..."
 cd /opt/app/frontend
+
+# Check if server.js exists
+if [ ! -f "server.js" ]; then
+  echo "ERROR: server.js not found in /opt/app/frontend"
+  ls -la /opt/app/frontend/
+  exit 1
+fi
+
 PORT=3333 HOSTNAME=0.0.0.0 node server.js &
 FRONTEND_PID=$!
 
-# Wait for all processes to finish
-wait -n
+# Wait a moment for frontend to start
+sleep 3
+
+# Check if frontend process is still running
+if ! kill -0 $FRONTEND_PID 2>/dev/null; then
+  echo "ERROR: Frontend process died immediately"
+  exit 1
+fi
+
+echo "All services started successfully! 🚀"
+echo "Backend PID: $BACKEND_PID"
+echo "Frontend PID: $FRONTEND_PID"
+
+# Monitor processes and restart if needed
+while true; do
+  if ! kill -0 $BACKEND_PID 2>/dev/null; then
+    echo "ERROR: Backend process died"
+    exit 1
+  fi
+  
+  if ! kill -0 $FRONTEND_PID 2>/dev/null; then
+    echo "ERROR: Frontend process died"
+    exit 1
+  fi
+  
+  sleep 10
+done
