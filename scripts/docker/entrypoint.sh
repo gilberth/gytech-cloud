@@ -41,7 +41,8 @@ fi
 
 # Run the frontend server
 echo "Starting frontend server..."
-PORT=3333 HOSTNAME=0.0.0.0 node frontend/server.js &
+cd /opt/app/frontend
+PORT=3333 HOSTNAME=0.0.0.0 node server.js &
 FRONTEND_PID=$!
 
 # Wait for all processes to finish
