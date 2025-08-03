@@ -25,7 +25,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Verify files
+    - name: Verify files and test builds
       run: |
         echo "=== Project structure ==="
         ls -la
@@ -33,6 +33,16 @@ jobs:
         cat frontend/package.json | head -20
         echo "=== Backend package.json ==="
         cat backend/package.json | head -20
+        echo "=== Testing frontend build locally ==="
+        cd frontend
+        npm ci
+        npm run build || echo "Frontend build failed with exit code $?"
+        cd ..
+        echo "=== Testing backend build locally ==="
+        cd backend
+        npm ci
+        npx prisma generate
+        npm run build || echo "Backend build failed with exit code $?"
 
     - name: Log in to Container Registry
       if: github.event_name != 'pull_request'
@@ -55,12 +65,24 @@ jobs:
           type=semver,pattern={{major}}
           type=raw,value=latest,enable={{is_default_branch}}
 
-    - name: Build and push Docker image
+    - name: Build Docker image with detailed logs
       uses: docker/build-push-action@v5
       with:
         context: .
         platforms: linux/amd64
-        push: ${{ github.event_name != 'pull_request' }}
+        push: false
+        tags: test-build
+        build-args: |
+          BUILDKIT_PROGRESS=plain
+        outputs: type=docker,dest=/tmp/test-image.tar
+        
+    - name: Push Docker image (if build successful)
+      if: github.event_name != 'pull_request'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64
+        push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
