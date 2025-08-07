@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GYTECH Cloud is a self-hosted file sharing platform and WeTransfer alternative. It's a full-stack application with:
+GYTECH Cloud (based on Pingvin Share) is a self-hosted file sharing platform and WeTransfer alternative. It's a full-stack application with:
 
 - **Backend**: NestJS with TypeScript, Prisma ORM, SQLite database
 - **Frontend**: Next.js with TypeScript, Mantine UI components
@@ -27,6 +27,7 @@ The codebase follows a monorepo structure with separate applications:
 - **File Storage**: Local filesystem or AWS S3
 - **Security**: ClamAV integration for malware scanning, rate limiting
 - **Core Modules**: Auth, Share, ReverseShare, User, Config, File, OAuth
+- **Testing**: Newman (Postman) system tests in `test/newman-system-tests.json`
 
 ### Frontend Architecture
 
@@ -40,6 +41,7 @@ The codebase follows a monorepo structure with separate applications:
 ## Development Workflow
 
 ### Recommended Local Development Setup
+
 ```bash
 # 1. Create conda virtual environment (REQUIRED)
 conda create -n pingvin-share node=22 -y
@@ -60,6 +62,7 @@ cd frontend && npm run dev    # Frontend on port 3000
 ```
 
 ### Daily Development Commands
+
 ```bash
 # ALWAYS activate environment first
 conda activate pingvin-share
@@ -95,27 +98,27 @@ conda deactivate
 ## Docker Development
 
 ### Docker Compose Patterns
-- `docker-compose.yml` - Production with pre-built image
-- `docker-compose.local.yml` - Local build from source code
-- `docker-compose.dev.yml` - Additional services (ClamAV)
+
+- `docker-compose.yml` - Production with pre-built image (uses `ghcr.io/gilberth/gytech-cloud:latest`)
+- Additional compose files for development and services may need to be created locally
+- ClamAV integration available as documented extension
 
 ### Complete Feature → Docker Workflow
+
 1. **Local development**: Separate `npm run dev` for backend/frontend
 2. **Local testing**: Verify functionality with hot reload
 3. **Database sync**: `npx prisma migrate dev` if schema changes
-4. **Docker testing**: `docker compose -f docker-compose.local.yml up -d`
-5. **Deploy**: `npm run deploy:dev` when ready
+4. **Docker testing**: Create local compose file if needed
+5. **Deploy**: `npm run deploy:dev` builds and pushes development image
 
 ### Docker Commands
+
 ```bash
-# Local build for testing
-docker compose -f docker-compose.local.yml up -d
-
-# With ClamAV for security testing
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-
 # Production (pre-built image)
 docker compose up -d
+
+# Deploy development image (requires appropriate Docker registry access)
+npm run deploy:dev
 ```
 
 ## Configuration
@@ -127,12 +130,14 @@ docker compose up -d
 ## Critical Architectural Patterns
 
 ### Authentication & Security Flow
+
 - **Dual Token System**: Access tokens (short-lived) + refresh tokens with automatic renewal
 - **Guard Chain Pattern**: `JwtGuard` → `ShareSecurityGuard` → `FileSecurityGuard` extending functionality
 - **Share-specific JWT**: Individual tokens per share with expiration matching share lifecycle
 - **TOTP Flow**: LoginToken intermediary when `user.totpVerified` is true (`backend/src/auth/strategy/jwt.strategy.ts`)
 
 ### Share & File Management
+
 - **Chunked Upload**: Default 10MB chunks via `uploadFile()` in share service
 - **Storage Abstraction**: `FileService` facade choosing Local/S3 based on config
 - **Share Lifecycle**: Create → Upload → Complete → Async ZIP creation
@@ -142,6 +147,7 @@ docker compose up -d
 - **Visual Enhancement**: Extension badges, tooltips, and type-specific icons for UX
 
 ### Database Relationships (Critical)
+
 ```
 User → Share (optional creator, allows anonymous)
 Share → File[] (cascade delete)
@@ -151,6 +157,7 @@ ReverseShare → Share[] (many reverse shares create regular shares)
 ```
 
 ### Configuration Management
+
 - **Dual System**: YAML file (locks UI) OR database config (UI editable)
 - **Event-driven**: Config service emits updates on changes
 - **Categories**: `general`, `share`, `email`, `oauth`, `s3`, etc. with typed retrieval
@@ -158,6 +165,7 @@ ReverseShare → Share[] (many reverse shares create regular shares)
 - **Dynamic Loading**: Frontend gets config via `/api/configs` endpoint
 
 ### Frontend Patterns
+
 - **Service Layer**: Axios-based with cookie management in `frontend/src/services/`
 - **Context Pattern**: `UserContext`/`ConfigContext` for global state
 - **Modal Functions**: Return modal configs (`showCreateUploadModal()`)
@@ -176,7 +184,9 @@ ReverseShare → Share[] (many reverse shares create regular shares)
 ## Project-Specific Conventions
 
 ### NestJS Module Structure
+
 Each feature follows this pattern:
+
 ```
 feature/
 ├── feature.module.ts
@@ -187,6 +197,7 @@ feature/
 ```
 
 ### File Storage & Security
+
 - Files stored in `SHARE_DIRECTORY` or S3
 - Shares compressed as ZIP for download
 - Storage providers: `local` and `s3`
@@ -194,11 +205,13 @@ feature/
 - File handling via `FileService` abstraction layer
 
 ### Error Handling Patterns
+
 - **Backend**: NestJS exceptions (`NotFoundException`, `BadRequestException`)
 - **Frontend**: Mantine notifications for API errors
 - **Logging**: Structured logs for debugging
 
 ### External Integrations
+
 - **OIDC/LDAP**: Configured via `OAuthModule` and `ldapts`
 - **TOTP 2FA**: Using `otplib` library
 - **Email**: Nodemailer with dynamic SMTP configuration
@@ -219,28 +232,35 @@ feature/
 - API routes: Backend modules in `backend/src/`
 - Components: `frontend/src/components/`
 - Database models: `backend/prisma/schema.prisma`
+- Frontend API proxy: `frontend/src/pages/api/[...all].tsx` (proxies to backend in development)
+- Configuration example: `config.example.yaml`
+- Translation files: `frontend/src/i18n/translations/`
 
 ## Recent UX Architecture Enhancements
 
 ### Advanced Shares Management (`frontend/src/pages/account/shares.tsx`)
+
 - **Search Implementation**: Real-time filtering with `useDebouncedValue` (300ms)
 - **Status Management**: Badge system for share states (Active, Expired, Expiring, View Limit)
 - **Bulk Operations**: Set-based selection tracking with confirmation modals
 - **Responsive Design**: Conditional rendering between table (desktop) and cards (mobile)
 
 ### Enhanced File Recognition System
+
 - **Type Detection**: Granular file type identification with color-coded icons
 - **Visual Elements**: Extension badges positioned absolutely over thumbnails
 - **Tooltip Integration**: Rich file information with type descriptions and sizes
 - **Icon Mapping**: Specific icons for document types (PDF, Word, Excel, PowerPoint)
 
 ### Modal Component Architecture
+
 - **Separation of Concerns**: Modal functions (`show*Modal`) vs. components (`*Modal`)
 - **Form Validation**: Mantine `useForm` with custom validation rules
 - **State Management**: Local loading states with async operations
 - **Translation Integration**: `translateOutsideContext()` for modals outside React tree
 
 ### Quick Share Implementation
+
 - **Default Configuration**: Intelligent defaults bypass modal for rapid sharing
 - **Workflow Optimization**: Reduces sharing time from 2 minutes to 30 seconds
 - **Smart Expiration**: 7-day default for quick shares, configurable for manual shares
@@ -255,3 +275,30 @@ feature/
 - **File Type Detection**: Use granular type detection for better UX (PDF vs generic document)
 - **Responsive Design**: Test both desktop table and mobile card layouts
 - **Search Performance**: Use debounced search (300ms) for real-time filtering
+
+## Rebranding Status
+
+**Project Name**: GYTECH Cloud (based on Pingvin Share)
+
+**Pending Frontend Updates** (non-urgent):
+
+- Update GitHub links in homepage (`frontend/src/pages/index.tsx:169`)
+- Update admin panel links (`frontend/src/pages/admin/index.tsx:67`, `frontend/src/pages/admin/intro.tsx:30`)
+- Update package.json references to reflect new branding
+- Consider updating default configuration values (appName, etc.)
+
+## Development Troubleshooting
+
+- **Port Management**:
+
+  - Backend default: port 8080
+  - Frontend default: port 3000
+  - Kill processes if ports are occupied: `pkill -f "nest start"` or `pkill -f "next dev"`
+  - Frontend proxy configuration automatically routes `/api/*` to backend
+
+- **Database Issues**:
+  - Reset database: `npx prisma migrate reset -f`
+  - View database: `npx prisma studio`
+  - Always run Prisma commands from `backend/` directory
+
+Cada cambio que realice agregaro a CHANGELOG.md
