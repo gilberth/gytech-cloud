@@ -25,12 +25,13 @@ import { useDebouncedValue } from "@mantine/hooks";
 import moment from "moment";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { TbEdit, TbInfoCircle, TbLink, TbLock, TbTrash, TbFile, TbFileText, TbPhoto, TbVideo, TbMusic, TbFileZip, TbSearch, TbFileSpreadsheet, TbPresentation } from "react-icons/tb";
+import { TbEdit, TbInfoCircle, TbLink, TbLock, TbTrash, TbFile, TbFileText, TbPhoto, TbVideo, TbMusic, TbFileZip, TbSearch, TbFileSpreadsheet, TbPresentation, TbEye } from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import showShareInformationsModal from "../../components/account/showShareInformationsModal";
 import showShareEditModal from "../../components/account/showShareEditModal";
 import showShareLinkModal from "../../components/account/showShareLinkModal";
+import showFilePreviewModal from "../../components/share/modals/showFilePreviewModal";
 import CenterLoader from "../../components/core/CenterLoader";
 import useConfig from "../../hooks/config.hook";
 import useTranslate from "../../hooks/useTranslate.hook";
@@ -337,6 +338,23 @@ const MyShares = () => {
           >
             <TbInfoCircle size={16} />
           </ActionIcon>
+          
+          {share.files && share.files.length > 0 && share.files.some((file: any) => shareService.doesFileSupportPreview(file.name)) && (
+            <ActionIcon
+              color="green"
+              variant="light"
+              size="sm"
+              onClick={() => {
+                // Find the first previewable file
+                const previewableFile = share.files.find((file: any) => shareService.doesFileSupportPreview(file.name));
+                if (previewableFile) {
+                  showFilePreviewModal(share.id, previewableFile, modals);
+                }
+              }}
+            >
+              <TbEye size={16} />
+            </ActionIcon>
+          )}
           
           <ActionIcon
             color="victoria"
@@ -692,6 +710,22 @@ const MyShares = () => {
                         >
                           <TbInfoCircle />
                         </ActionIcon>
+                        {share.files && share.files.length > 0 && share.files.some((file: any) => shareService.doesFileSupportPreview(file.name)) && (
+                          <ActionIcon
+                            color="green"
+                            variant="light"
+                            size={25}
+                            onClick={() => {
+                              // Find the first previewable file
+                              const previewableFile = share.files.find((file: any) => shareService.doesFileSupportPreview(file.name));
+                              if (previewableFile) {
+                                showFilePreviewModal(share.id, previewableFile, modals);
+                              }
+                            }}
+                          >
+                            <TbEye />
+                          </ActionIcon>
+                        )}
                         <ActionIcon
                           color="victoria"
                           variant="light"

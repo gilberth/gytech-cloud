@@ -66,18 +66,27 @@ const isShareIdAvailable = async (id: string): Promise<boolean> => {
 
 const doesFileSupportPreview = (fileName: string) => {
   const mimeType = (mime.contentType(fileName) || "").split(";")[0];
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
 
-  if (!mimeType) return false;
+  if (!mimeType && !ext) return false;
 
   const supportedMimeTypes = [
     mimeType.startsWith("video/"),
     mimeType.startsWith("image/"),
     mimeType.startsWith("audio/"),
     mimeType.startsWith("text/"),
-    mimeType == "application/pdf",
+    mimeType === "application/pdf",
+    // Office documents
+    ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext),
+    // Code files
+    ['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'h', 'css', 'html', 'xml', 'json', 'yaml', 'yml'].includes(ext),
   ];
 
   return supportedMimeTypes.some((isSupported) => isSupported);
+};
+
+const getFileMetadata = async (shareId: string, fileId: string) => {
+  return (await api.get(`shares/${shareId}/files/${fileId}/metadata`)).data;
 };
 
 const downloadFile = async (shareId: string, fileId: string) => {
@@ -157,6 +166,7 @@ export default {
   update,
   getMetaData,
   doesFileSupportPreview,
+  getFileMetadata,
   getMyShares,
   isShareIdAvailable,
   downloadFile,

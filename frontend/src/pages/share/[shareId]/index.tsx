@@ -228,8 +228,8 @@ const Share = ({ shareId }: { shareId: string }) => {
                     withPlaceholder
                     placeholder={getFileIcon(file.name, 40)}
                     sx={{ cursor: 'pointer' }}
-                    onClick={async () => {
-                      await shareService.downloadFile(shareId, file.id);
+                    onClick={() => {
+                      showFilePreviewModal(shareId, file, modals);
                     }}
                   />
                   <Text size="xs" truncate mt="xs" align="center">
@@ -301,7 +301,7 @@ const Share = ({ shareId }: { shareId: string }) => {
                           showFilePreviewModal(shareId, file, modals);
                         }}
                       >
-                        Vista previa
+                        Preview
                       </Badge>
                     )}
                     
@@ -314,7 +314,7 @@ const Share = ({ shareId }: { shareId: string }) => {
                         await shareService.downloadFile(shareId, file.id);
                       }}
                     >
-                      Descargar
+                      Download
                     </Badge>
                   </Group>
                 </Group>

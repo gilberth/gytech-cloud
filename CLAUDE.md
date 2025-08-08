@@ -301,4 +301,9 @@ feature/
   - View database: `npx prisma studio`
   - Always run Prisma commands from `backend/` directory
 
+## Frontend Monitoring Recommendations
+
+- **Frontend Health Monitoring**:
+  - Luego de iniciar el frontend esperar cierto tiempo para validar si aun se encuentra activo, si no revisa el motivo de la caida del front
+
 Cada cambio que realice agregaro a CHANGELOG.md

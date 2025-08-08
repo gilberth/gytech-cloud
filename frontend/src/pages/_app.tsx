@@ -71,12 +71,14 @@ function App({ Component, pageProps }: AppProps) {
   }, []);
 
   useEffect(() => {
-    const colorScheme =
-      userPreferences.get("colorScheme") == "system"
-        ? systemTheme
-        : userPreferences.get("colorScheme");
+    if (typeof window !== "undefined") {
+      const colorScheme =
+        userPreferences.get("colorScheme") == "system"
+          ? systemTheme
+          : userPreferences.get("colorScheme");
 
-    toggleColorScheme(colorScheme);
+      toggleColorScheme(colorScheme);
+    }
   }, [systemTheme]);
 
   const toggleColorScheme = (value: ColorScheme) => {
