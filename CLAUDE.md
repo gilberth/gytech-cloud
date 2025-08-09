@@ -307,3 +307,4 @@ feature/
   - Luego de iniciar el frontend esperar cierto tiempo para validar si aun se encuentra activo, si no revisa el motivo de la caida del front
 
 Cada cambio que realice agregaro a CHANGELOG.md
+- actualmente estamos trabajando en local para implementacion, cuando este lista para produccion, eso se llevará a un contenedor y tendrá la direccion https://files.gytech.com.pe

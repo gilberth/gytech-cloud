@@ -134,3 +134,4 @@ Running seed command `ts-node prisma/seed/config.seed.ts` ...
   supportsPreview: true,
   previewType: 'pdf'
 }
+[32m[Nest] 43352  - [39m09/08/2025, 0:20:20 [32m    LOG[39m [38;5;3m[JobsService] [39m[32mDeleted 0 temporary files[39m
