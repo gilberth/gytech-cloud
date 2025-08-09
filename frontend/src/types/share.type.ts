@@ -26,6 +26,7 @@ export type CreateShare = {
   description?: string;
   recipients: string[];
   expiration: string;
+  storageProvider?: string;
   security: ShareSecurity;
 };
 

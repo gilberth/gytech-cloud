@@ -1,3 +1,106 @@
+## [1.15.0-gytech] (2025-08-09)
+
+### Features - Multi-Cloud Storage Integration
+
+* **admin-panel:** Added multi-cloud storage configuration support
+  - **OneDrive Integration:** Microsoft OneDrive storage provider with Azure AD authentication
+    - Client ID, Client Secret, Tenant ID, and Drive ID configuration
+    - Full Microsoft Graph API integration for file operations
+  - **Google Drive Integration:** Google Drive storage provider with OAuth2 authentication  
+    - Client ID, Client Secret, Refresh Token, and Parent Folder ID configuration
+    - Complete Google Drive API v3 integration
+  - **Azure Blob Storage Integration:** Azure Blob Storage provider
+    - Account Name, Account Key, SAS Token, and Container Name configuration
+    - Full Azure Storage SDK integration
+
+* **backend:** Multi-cloud storage architecture implementation
+  - Created abstract `CloudStorageService` interface for consistent provider implementation
+  - Implemented `OneDriveStorageService` with Microsoft Graph API
+  - Implemented `GoogleDriveStorageService` with Google Drive API v3
+  - Implemented `AzureBlobStorageService` with Azure Storage SDK
+  - Enhanced `FileService` with multi-provider support and automatic provider selection
+  - Added configuration DTOs with validation for all cloud providers:
+    - `UpdateOneDriveConfigDto` for Microsoft OneDrive configuration
+    - `UpdateGoogleDriveConfigDto` for Google Drive configuration  
+    - `UpdateAzureConfigDto` for Azure Blob Storage configuration
+
+* **frontend:** Enhanced admin configuration UI
+  - Added OneDrive, Google Drive, and Azure Blob Storage to admin navigation menu
+  - Comprehensive configuration forms for each cloud provider
+  - Real-time validation and secure credential handling
+  - Per-share storage provider selection capability
+
+* **database:** Extended configuration schema
+  - Added cloud storage provider configurations to database seed
+  - Configuration categories: `onedrive`, `googledrive`, `azureblob`
+  - Support for provider-specific settings and credentials
+  - Enhanced storage provider selection per share
+
+* **internationalization:** Complete translation support
+  - English (en-US) translations for all cloud provider configurations
+  - Spanish (es-ES) translations for all cloud provider configurations
+  - Comprehensive field descriptions and help text
+  - Category navigation labels
+
+### Technical Improvements
+
+* **file-storage:** Unified cloud storage abstraction layer
+  - Seamless switching between Local, S3, OneDrive, Google Drive, and Azure Blob
+  - Consistent file operations across all storage providers
+  - Automatic provider failover and error handling
+  - Optimized upload/download performance for each provider
+
+* **security:** Enhanced credential management
+  - Secure storage of cloud provider credentials
+  - Encrypted credential transmission
+  - OAuth2 flow support for cloud authentication
+  - Token refresh automation for long-lived connections
+
+* **ui-ux:** Improved admin experience
+  - Intuitive cloud provider configuration workflow
+  - Visual indicators for enabled/disabled providers
+  - Comprehensive validation feedback
+  - Responsive design for mobile administration
+
+### Bug Fixes
+
+* **admin-config:** Fixed configuration loading for empty categories
+  - Resolved `allowEdit` property access error
+  - Improved error handling for undefined configuration arrays
+  - Enhanced category routing for cloud storage providers
+
+## [1.14.0-gytech] (2025-08-07)
+
+### Features - GYTECH Cloud Enhancements
+
+* **file-preview:** Comprehensive file preview system with enhanced support
+  - Enhanced PDF preview with inline iframe rendering
+  - Improved video and audio player controls with metadata display
+  - Advanced image preview with better loading states and error handling
+  - Code syntax highlighting for popular programming languages (JS, TS, Python, Java, etc.)
+  - Office document preview using Google Docs Viewer (Word, Excel, PowerPoint)
+  - Enhanced text preview with Markdown rendering support
+  - File metadata API endpoint for better preview type detection
+  - Copy-to-clipboard functionality for code files
+  - Better security headers for different file types in preview mode
+  - Loading states and error handling for all preview types
+  - Responsive design with improved mobile experience
+
+* **backend:** Enhanced file serving with preview optimization
+  - New `/files/:fileId/metadata` endpoint for file information
+  - Enhanced security headers based on file type and preview mode
+  - Support for `?preview=true` parameter for optimized preview rendering
+  - Better MIME type detection and file type classification
+  - Improved Content-Security-Policy headers for secure file viewing
+
+* **frontend:** Improved user experience for file sharing
+  - Enhanced file type detection with granular categorization
+  - Better file icons and badges for different file types
+  - Improved modal preview system with metadata display
+  - Click-to-preview functionality for image thumbnails
+  - Better action buttons with external link and download options
+  - Loading states and error handling throughout the preview system
+
 ## [1.13.0](https://github.com/stonith404/pingvin-share/compare/v1.12.0...v1.13.0) (2025-05-25)
 
 

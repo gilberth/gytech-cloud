@@ -1,0 +1,403 @@
+
+> pingvin-share-frontend@1.13.0 dev
+> next dev
+
+  ▲ Next.js 14.2.26
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+> [PWA] PWA support is disabled
+> [PWA] PWA support is disabled
+ ✓ Ready in 1830ms
+ ○ Compiling /404 ...
+ ✓ Compiled /404 in 8.1s (1334 modules)
+ GET /_next/static/webpack/c41b5c4e51db176b.webpack.hot-update.json 404 in 8669ms
+ GET /_next/static/webpack/c41b5c4e51db176b.webpack.hot-update.json 404 in 8531ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled /src/middleware in 185ms (128 modules)
+ ○ Compiling /share/[shareId] ...
+ ✓ Compiled / in 5s (1425 modules)
+ GET /_next/static/webpack/c41b5c4e51db176b.webpack.hot-update.json 404 in 517ms
+ GET /_next/static/webpack/c41b5c4e51db176b.webpack.hot-update.json 404 in 504ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ HEAD / 200 in 2365ms
+ GET /share/LRtszOHC 200 in 5297ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /auth/signIn?redirect=%2Faccount%2Fshares 200 in 5337ms
+ GET /share/LRtszOHC 200 in 27ms
+ GET /auth/signIn?redirect=%2Faccount%2Fshares 200 in 28ms
+ HEAD /auth/signIn 200 in 17ms
+ ✓ Compiled /api/[...all] in 262ms (199 modules)
+(node:44339) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ POST /api/auth/token 200 in 342ms
+ GET /api/users/me 304 in 6ms
+ ○ Compiling /upload ...
+ ✓ Compiled /upload in 1700ms (1567 modules)
+ GET /share/LRtszOHC 200 in 1755ms
+ GET /_next/data/development/account/shares.json 200 in 2083ms
+ GET /upload 200 in 1720ms
+ GET /_next/data/development/account/shares.json 200 in 46ms
+ GET /api/shares 200 in 28ms
+ GET /api/shares/ObFbG7SG/files/54a13c55-492b-48c3-b57b-baf386e01392/logo.png 200 in 22ms
+ GET /_next/data/development/upload.json 200 in 25ms
+ GET /api/shares/isShareIdAvailable/Mhm6j7cy 200 in 13ms
+ POST /api/shares 201 in 32ms
+ POST /api/shares/Mhm6j7cy/files?name=BOLETA+DE+PAGO+08_2024.pdf&chunkIndex=0&totalChunks=1 201 in 11ms
+ POST /api/shares/Mhm6j7cy/complete 202 in 16ms
+ GET /_next/data/development/upload.json 200 in 29ms
+ GET /_next/data/development/account/shares.json 200 in 21ms
+ GET /api/shares 200 in 25ms
+ GET /api/shares/ObFbG7SG/files/54a13c55-492b-48c3-b57b-baf386e01392/logo.png 200 in 9ms
+ GET /api/shares/Mhm6j7cy/files/7b3f6b60-cc47-4464-82b7-a53fb87bc812/metadata 200 in 15ms
+ GET /api/shares/Mhm6j7cy/files/7b3f6b60-cc47-4464-82b7-a53fb87bc812?download=false&preview=true 200 in 8ms
+ ✓ Compiled /admin in 196ms (1573 modules)
+ GET /_next/data/development/admin.json 200 in 370ms
+ ○ Compiling /admin/config/[category] ...
+ ✓ Compiled /admin/config/[category] in 511ms (1599 modules)
+ GET /_next/data/development/admin/config/general.json?category=general 200 in 575ms
+ GET /api/configs/admin/general 200 in 6ms
+ GET /api/configs/admin/general 304 in 6ms
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 26ms
+ GET /api/configs/admin/s3 200 in 8ms
+ GET /_next/data/development/admin/config/email.json?category=email 200 in 32ms
+ GET /api/configs/admin/email 200 in 6ms
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 39ms
+ GET /api/configs/admin/s3 304 in 6ms
+ GET /_next/data/development/upload.json 200 in 193ms
+ GET /_next/data/development/upload.json 200 in 25ms
+ GET /api/shares/isShareIdAvailable/cjPPVUvF 200 in 17ms
+ POST /api/shares 201 in 18ms
+ POST /api/shares/cjPPVUvF/files?name=template_app_proxmox.yaml&chunkIndex=0&totalChunks=1 201 in 12ms
+ POST /api/shares/cjPPVUvF/complete 202 in 10ms
+ GET /_next/data/development/upload.json 200 in 24ms
+ ○ Compiling /account/reverseShares ...
+ ✓ Compiled /share/[shareId] in 926ms (1521 modules)
+ GET /_next/data/development/account/reverseShares.json 200 in 1178ms
+ GET /share/LRtszOHC 200 in 543ms
+ GET /api/reverseShares 200 in 10ms
+ ✓ Compiled /account/shares in 110ms (1608 modules)
+ GET /_next/data/development/account/shares.json 200 in 254ms
+ GET /api/shares 200 in 11ms
+ GET /api/shares/ObFbG7SG/files/54a13c55-492b-48c3-b57b-baf386e01392/logo.png 200 in 30ms
+ ✓ Compiled /s/[shareId] in 178ms (1609 modules)
+ GET /s/d5Ifv7Q4 307 in 267ms
+ GET /share/d5Ifv7Q4 200 in 41ms
+ GET /api/shares/d5Ifv7Q4 304 in 13ms
+ GET /api/shares/d5Ifv7Q4/files/3848966a-de35-4473-ac3d-2625d22d4ba6/metadata 304 in 15ms
+ GET /api/shares/d5Ifv7Q4/files/3848966a-de35-4473-ac3d-2625d22d4ba6?download=false&preview=true 200 in 10ms
+ GET /api/shares/d5Ifv7Q4/files/3848966a-de35-4473-ac3d-2625d22d4ba6?download=false&preview=true 200 in 21ms
+ GET /api/shares/LRtszOHC 304 in 57ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1120ms (1517 modules)
+ GET / 200 in 1512ms
+ ✓ Compiled /api/[...all] in 35ms (252 modules)
+ POST /api/auth/token 200 in 76ms
+ GET /api/users/me 304 in 4ms
+ GET /api/users/me 304 in 5ms
+ GET /api/users/me 304 in 10ms
+ GET /api/users/me 304 in 32ms
+ ✓ Compiled /upload in 93ms (1573 modules)
+ ✓ Compiled in 79ms (1573 modules)
+ GET /api/users/me 304 in 289ms
+ GET /_next/data/development/upload.json 200 in 384ms
+ GET /api/users/me 304 in 3ms
+ GET /api/users/me 304 in 3ms
+ GET /_next/data/development/upload.json 200 in 12ms
+ GET /api/users/me 304 in 3ms
+ GET /api/users/me 304 in 8ms
+ GET /_next/data/development/upload.json 200 in 10ms
+ GET /api/users/me 304 in 5ms
+ GET /api/users/me 304 in 3ms
+ GET /_next/data/development/upload.json 200 in 11ms
+ GET /api/users/me 304 in 3ms
+ GET /api/users/me 304 in 4ms
+ GET /_next/data/development/upload.json 200 in 13ms
+ GET /api/users/me 304 in 3ms
+ GET /api/users/me 304 in 14ms
+ GET /_next/data/development/upload.json 200 in 15ms
+ GET /api/users/me 304 in 3ms
+ GET /api/users/me 304 in 6ms
+ GET /_next/data/development/upload.json 200 in 14ms
+ GET /api/users/me 304 in 3ms
+ GET /api/users/me 304 in 4ms
+ GET /_next/data/development/upload.json 200 in 14ms
+ GET /api/users/me 304 in 3ms
+ GET /api/users/me 304 in 5ms
+ GET /_next/data/development/upload.json 200 in 18ms
+ ✓ Compiled /admin in 408ms (1579 modules)
+ GET /_next/data/development/admin.json 200 in 499ms
+ ✓ Compiled /admin/config/[category] in 121ms (1516 modules)
+ GET /_next/data/development/admin/config/general.json?category=general 200 in 219ms
+ GET /api/configs/admin/general 304 in 9ms
+ GET /api/configs/admin/general 304 in 3ms
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 30ms
+ GET /api/configs/admin/s3 304 in 7ms
+ GET /admin/config/s3 200 in 34ms
+ GET /api/configs/admin/s3 304 in 8ms
+ GET /api/configs/admin/s3 304 in 4ms
+ GET /admin/config/s3 200 in 33ms
+ GET /api/configs/admin/s3 304 in 5ms
+ GET /api/configs/admin/s3 304 in 4ms
+ GET /admin/config/s3 200 in 30ms
+ GET /api/configs/admin/s3 304 in 5ms
+ GET /api/configs/admin/s3 304 in 6ms
+ ✓ Compiled in 436ms (1442 modules)
+ ✓ Compiled in 537ms (1427 modules)
+ ✓ Compiled in 338ms (1427 modules)
+Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config.category.onedrive" for locale "es-ES", using id as fallback.
+
+    at new MissingTranslationError (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/error.js:82:28)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/message.js:68:21)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/createIntl.js:32:39)
+    at FormattedMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/message.js:23:17)
+    at renderWithHooks (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderMemo (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5879:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6022:11)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderNode (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6270:12)
+    at renderHostElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5642:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5963:5)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11) {
+  code: 'MISSING_TRANSLATION',
+  descriptor: {
+    id: 'admin.config.category.onedrive',
+    description: undefined,
+    defaultMessage: undefined
+  }
+}
+Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config.category.googledrive" for locale "es-ES", using id as fallback.
+
+    at new MissingTranslationError (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/error.js:82:28)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/message.js:68:21)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/createIntl.js:32:39)
+    at FormattedMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/message.js:23:17)
+    at renderWithHooks (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderMemo (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5879:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6022:11)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderNode (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6270:12)
+    at renderHostElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5642:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5963:5)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11) {
+  code: 'MISSING_TRANSLATION',
+  descriptor: {
+    id: 'admin.config.category.googledrive',
+    description: undefined,
+    defaultMessage: undefined
+  }
+}
+Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config.category.azure" for locale "es-ES", using id as fallback.
+
+    at new MissingTranslationError (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/error.js:82:28)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/message.js:68:21)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/createIntl.js:32:39)
+    at FormattedMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/message.js:23:17)
+    at renderWithHooks (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderMemo (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5879:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6022:11)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderNode (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6270:12)
+    at renderHostElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5642:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5963:5)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11) {
+  code: 'MISSING_TRANSLATION',
+  descriptor: {
+    id: 'admin.config.category.azure',
+    description: undefined,
+    defaultMessage: undefined
+  }
+}
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 339ms
+ GET /_next/data/development/share/LRtszOHC.json?shareId=LRtszOHC 200 in 333ms
+ ✓ Compiled /api/[...all] in 50ms (233 modules)
+ GET /api/configs/admin/s3 304 in 92ms
+ GET /api/shares/LRtszOHC 304 in 96ms
+ ✓ Compiled in 118ms (1442 modules)
+Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config.category.onedrive" for locale "es-ES", using id as fallback.
+
+    at new MissingTranslationError (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/error.js:82:28)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/message.js:68:21)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/createIntl.js:32:39)
+    at FormattedMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/message.js:23:17)
+    at renderWithHooks (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderMemo (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5879:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6022:11)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderNode (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6270:12)
+    at renderHostElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5642:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5963:5)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11) {
+  code: 'MISSING_TRANSLATION',
+  descriptor: {
+    id: 'admin.config.category.onedrive',
+    description: undefined,
+    defaultMessage: undefined
+  }
+}
+Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config.category.googledrive" for locale "es-ES", using id as fallback.
+
+    at new MissingTranslationError (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/error.js:82:28)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/message.js:68:21)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/createIntl.js:32:39)
+    at FormattedMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/message.js:23:17)
+    at renderWithHooks (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderMemo (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5879:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6022:11)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderNode (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6270:12)
+    at renderHostElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5642:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5963:5)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11) {
+  code: 'MISSING_TRANSLATION',
+  descriptor: {
+    id: 'admin.config.category.googledrive',
+    description: undefined,
+    defaultMessage: undefined
+  }
+}
+Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config.category.azure" for locale "es-ES", using id as fallback.
+
+    at new MissingTranslationError (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/error.js:82:28)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/message.js:68:21)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/createIntl.js:32:39)
+    at FormattedMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/message.js:23:17)
+    at renderWithHooks (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderMemo (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5879:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6022:11)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderNode (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6270:12)
+    at renderHostElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5642:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5963:5)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11) {
+  code: 'MISSING_TRANSLATION',
+  descriptor: {
+    id: 'admin.config.category.azure',
+    description: undefined,
+    defaultMessage: undefined
+  }
+}
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 213ms
+ GET /_next/data/development/share/LRtszOHC.json?shareId=LRtszOHC 200 in 212ms
+ GET /api/configs/admin/s3 304 in 26ms
+ GET /api/shares/LRtszOHC 304 in 29ms
+ ✓ Compiled in 248ms (1442 modules)
+ GET /api/configs/admin/s3 304 in 126ms
+ GET /api/shares/LRtszOHC 304 in 127ms
+ GET /_next/data/development/share/LRtszOHC.json?shareId=LRtszOHC 200 in 136ms
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 158ms
+ ✓ Compiled in 148ms (1442 modules)
+ GET /api/shares/LRtszOHC 304 in 35ms
+ GET /api/configs/admin/s3 304 in 35ms
+ GET /_next/data/development/share/LRtszOHC.json?shareId=LRtszOHC 200 in 138ms
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 149ms
+ POST /api/auth/token 200 in 36ms
+ POST /api/auth/token 200 in 76ms
+ POST /api/auth/token 200 in 22ms
+ POST /api/auth/token 200 in 24ms
+ POST /api/auth/token 200 in 119ms
+ POST /api/auth/token 200 in 55ms
+ POST /api/auth/token 200 in 44ms
+ POST /api/auth/token 200 in 56ms
+ GET /share/LRtszOHC 200 in 36ms
+ GET /api/shares/LRtszOHC 304 in 16ms
+ GET /admin/config/s3 200 in 25ms
+ GET /api/configs/admin/s3 304 in 7ms
+ GET /api/configs/admin/s3 304 in 5ms
+ GET /_next/data/development/admin/config/onedrive.json?category=onedrive 200 in 20ms
+ GET /api/configs/admin/onedrive 200 in 3ms
+ GET /_next/data/development/admin/config/googledrive.json?category=googledrive 200 in 17ms
+ GET /api/configs/admin/googledrive 200 in 3ms
+ GET /_next/data/development/admin/config/azure.json?category=azure 200 in 18ms
+ GET /api/configs/admin/azure 200 in 4ms
+ GET /admin/config/azure 200 in 31ms
+ GET /api/configs/admin/azure 304 in 4ms
+ GET /api/configs/admin/azure 304 in 3ms
+ ✓ Compiled in 705ms (1442 modules)
+ ✓ Compiled in 145ms (1442 modules)
+ ✓ Compiled in 126ms (1442 modules)
+Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config.category.azureblob" for locale "es-ES", using id as fallback.
+
+    at new MissingTranslationError (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/error.js:82:28)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/@formatjs/intl/src/message.js:68:21)
+    at formatMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/createIntl.js:32:39)
+    at FormattedMessage (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-intl/src/components/message.js:23:17)
+    at renderWithHooks (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5658:16)
+    at renderIndeterminateComponent (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5732:15)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5957:7)
+    at renderMemo (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5879:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6022:11)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11)
+    at renderNodeDestructive (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6087:14)
+    at renderNode (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6270:12)
+    at renderHostElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5642:3)
+    at renderElement (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:5963:5)
+    at renderNodeDestructiveImpl (/Users/gilberth/Documents/test2/gytech-cloud/frontend/node_modules/react-dom/cjs/react-dom-server.browser.development.js:6115:11) {
+  code: 'MISSING_TRANSLATION',
+  descriptor: {
+    id: 'admin.config.category.azureblob',
+    description: undefined,
+    defaultMessage: undefined
+  }
+}
+ GET /_next/data/development/admin/config/azure.json?category=azure 200 in 245ms
+ ✓ Compiled in 169ms (1442 modules)
+ GET /_next/data/development/admin/config/azure.json?category=azure 200 in 158ms
+ ○ Compiling /auth/signIn ...
+ ✓ Compiled /auth/signIn in 568ms (1444 modules)
+ GET /auth/signIn?redirect=%2Fadmin%2Fconfig%2Fazure 200 in 780ms
+ ✓ Compiled /api/[...all] in 24ms (240 modules)
+ POST /api/auth/token 200 in 60ms
+ GET /api/users/me 304 in 3ms
+ GET /_next/data/development/admin/config/azure.json?category=azure 200 in 100ms
+ GET /api/configs/admin/azure 304 in 5ms
+ GET /api/configs/admin/azure 304 in 3ms
+ GET /_next/data/development/admin/config/ldap.json?category=ldap 200 in 24ms
+ GET /api/configs/admin/ldap 200 in 8ms
+ GET /_next/data/development/admin/config/s3.json?category=s3 200 in 25ms
+ GET /api/configs/admin/s3 304 in 7ms
+ GET /_next/data/development/admin/config/onedrive.json?category=onedrive 200 in 25ms
+ GET /api/configs/admin/onedrive 304 in 5ms
+ GET /_next/data/development/admin/config/googledrive.json?category=googledrive 200 in 26ms
+ GET /api/configs/admin/googledrive 304 in 8ms
+ GET /_next/data/development/admin/config/azureblob.json?category=azureblob 200 in 25ms
+ GET /api/configs/admin/azureblob 200 in 5ms
+ GET /_next/data/development/admin/config/onedrive.json?category=onedrive 200 in 24ms
+ GET /api/configs/admin/onedrive 304 in 4ms
+ GET /_next/data/development/admin/config/azureblob.json?category=azureblob 200 in 24ms
+ GET /api/configs/admin/azureblob 304 in 5ms
+ GET /_next/data/development/admin/config/googledrive.json?category=googledrive 200 in 27ms
+ GET /api/configs/admin/googledrive 304 in 5ms
+ GET /_next/data/development/admin/config/onedrive.json?category=onedrive 200 in 23ms
+ GET /api/configs/admin/onedrive 304 in 5ms
+ POST /api/auth/token 200 in 39ms
+ POST /api/auth/token 200 in 23ms
+ POST /api/auth/token 200 in 46ms
+ POST /api/auth/token 200 in 30ms
+ POST /api/auth/token 200 in 46ms
+ POST /api/auth/token 200 in 23ms
+ POST /api/auth/token 200 in 69ms
+ POST /api/auth/token 200 in 36ms
+ POST /api/auth/token 200 in 40ms
+ POST /api/auth/token 200 in 22ms
+ POST /api/auth/token 200 in 107ms
+ POST /api/auth/token 200 in 28ms

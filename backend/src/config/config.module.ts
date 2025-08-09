@@ -1,14 +1,16 @@
 import { Global, Module } from "@nestjs/common";
 import { Config } from "@prisma/client";
 import { EmailModule } from "src/email/email.module";
+import { FileModule } from "src/file/file.module";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ConfigController } from "./config.controller";
+import { StorageConfigController } from "./storage-config.controller";
 import { ConfigService } from "./config.service";
 import { LogoService } from "./logo.service";
 
 @Global()
 @Module({
-  imports: [EmailModule],
+  imports: [EmailModule, FileModule],
   providers: [
     {
       provide: "CONFIG_VARIABLES",
@@ -28,7 +30,7 @@ import { LogoService } from "./logo.service";
     },
     LogoService,
   ],
-  controllers: [ConfigController],
+  controllers: [ConfigController, StorageConfigController],
   exports: [ConfigService],
 })
 export class ConfigModule {}

@@ -15,6 +15,7 @@ import {
   Textarea,
   TextInput,
 } from "@mantine/core";
+import StorageProviderSelector from "../StorageProviderSelector";
 import { useForm, yupResolver } from "@mantine/form";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
@@ -160,6 +161,7 @@ const CreateUploadModalBody = ({
       expiration_num: 1,
       expiration_unit: "-days",
       never_expires: false,
+      storageProvider: "LOCAL", // Default storage provider
     },
     validate: yupResolver(validationSchema),
   });
@@ -208,6 +210,7 @@ const CreateUploadModalBody = ({
           expiration: expirationString,
           recipients: values.recipients,
           description: values.description,
+          storageProvider: values.storageProvider,
           security: {
             password: values.password || undefined,
             maxViews: values.maxViews || undefined,
@@ -432,6 +435,20 @@ const CreateUploadModalBody = ({
               </Accordion.Item>
             )}
 
+            <Accordion.Item value="storage" sx={{ borderBottom: "none" }}>
+              <Accordion.Control>
+                <FormattedMessage id="upload.modal.accordion.storage.title" defaultMessage="Storage Provider" />
+              </Accordion.Control>
+              <Accordion.Panel>
+                <StorageProviderSelector
+                  value={form.values.storageProvider}
+                  onChange={(provider) => form.setFieldValue("storageProvider", provider)}
+                  disabled={false}
+                  showInfo={true}
+                />
+              </Accordion.Panel>
+            </Accordion.Item>
+
             <Accordion.Item value="security" sx={{ borderBottom: "none" }}>
               <Accordion.Control>
                 <FormattedMessage id="upload.modal.accordion.security.title" />
@@ -503,6 +520,7 @@ const SimplifiedCreateUploadModalModal = ({
     initialValues: {
       name: undefined,
       description: undefined,
+      storageProvider: "LOCAL", // Default storage provider
     },
     validate: yupResolver(validationSchema),
   });
@@ -526,6 +544,7 @@ const SimplifiedCreateUploadModalModal = ({
         expiration: "never",
         recipients: [],
         description: values.description,
+        storageProvider: values.storageProvider,
         security: {
           password: undefined,
           maxViews: undefined,
@@ -565,6 +584,12 @@ const SimplifiedCreateUploadModalModal = ({
                 "upload.modal.accordion.name-and-description.description.placeholder",
               )}
               {...form.getInputProps("description")}
+            />
+            <StorageProviderSelector
+              value={form.values.storageProvider}
+              onChange={(provider) => form.setFieldValue("storageProvider", provider)}
+              disabled={false}
+              showInfo={false}
             />
           </Stack>
           <Button type="submit" data-autofocus>

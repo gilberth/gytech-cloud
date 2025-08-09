@@ -658,6 +658,9 @@ export default {
   "admin.config.notify.no-changes": "No changes to save.",
 
   "admin.config.category.s3": "S3",
+  "admin.config.category.onedrive": "OneDrive",
+  "admin.config.category.googledrive": "Google Drive", 
+  "admin.config.category.azureblob": "Azure Blob",
   "admin.config.s3.enabled": "Enabled",
   "admin.config.s3.enabled.description":
     "Whether S3 should be used to store the shared files instead of the local file system.",
@@ -679,6 +682,54 @@ export default {
   "admin.config.s3.use-checksum": "Use checksum",
   "admin.config.s3.use-checksum.description":
     "Turn off for backends that do not support checksum (e.g. B2).",
+
+  "admin.config.onedrive.enabled": "Enabled",
+  "admin.config.onedrive.enabled.description":
+    "Whether OneDrive should be used to store the shared files.",
+  "admin.config.onedrive.client-id": "Client ID",
+  "admin.config.onedrive.client-id.description":
+    "The Client ID of your Microsoft Azure application.",
+  "admin.config.onedrive.client-secret": "Client Secret",
+  "admin.config.onedrive.client-secret.description":
+    "The Client Secret of your Microsoft Azure application.",
+  "admin.config.onedrive.tenant-id": "Tenant ID",
+  "admin.config.onedrive.tenant-id.description":
+    "The Tenant ID of your Microsoft Azure directory.",
+  "admin.config.onedrive.drive-id": "Drive ID",
+  "admin.config.onedrive.drive-id.description":
+    "The ID of the OneDrive where files should be stored.",
+
+  "admin.config.googledrive.enabled": "Enabled", 
+  "admin.config.googledrive.enabled.description":
+    "Whether Google Drive should be used to store the shared files.",
+  "admin.config.googledrive.client-id": "Client ID",
+  "admin.config.googledrive.client-id.description":
+    "The Client ID from your Google Cloud project.",
+  "admin.config.googledrive.client-secret": "Client Secret",
+  "admin.config.googledrive.client-secret.description":
+    "The Client Secret from your Google Cloud project.",
+  "admin.config.googledrive.refresh-token": "Refresh Token",
+  "admin.config.googledrive.refresh-token.description":
+    "The refresh token for accessing Google Drive API.",
+  "admin.config.googledrive.parent-folder-id": "Parent Folder ID",
+  "admin.config.googledrive.parent-folder-id.description":
+    "The ID of the Google Drive folder where files should be stored.",
+
+  "admin.config.azureblob.enabled": "Enabled",
+  "admin.config.azureblob.enabled.description":
+    "Whether Azure Blob Storage should be used to store the shared files.",
+  "admin.config.azureblob.account-name": "Account Name",
+  "admin.config.azureblob.account-name.description":
+    "The name of your Azure Storage account.",
+  "admin.config.azureblob.account-key": "Account Key", 
+  "admin.config.azureblob.account-key.description":
+    "The access key for your Azure Storage account.",
+  "admin.config.azureblob.sas-token": "SAS Token",
+  "admin.config.azureblob.sas-token.description":
+    "The Shared Access Signature token (alternative to account key).",
+  "admin.config.azureblob.container-name": "Container Name",
+  "admin.config.azureblob.container-name.description":
+    "The name of the Azure Blob container where files should be stored.",
 
   "admin.config.category.legal": "Legal",
   "admin.config.legal.enabled": "Enable legal notices",

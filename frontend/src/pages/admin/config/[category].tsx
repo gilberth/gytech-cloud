@@ -49,7 +49,7 @@ export default function AppShellDemo() {
   const [logo, setLogo] = useState<File | null>(null);
 
   const isEditingAllowed = (): boolean => {
-    return !configVariables || configVariables[0].allowEdit;
+    return !configVariables || configVariables.length === 0 || configVariables[0]?.allowEdit !== false;
   };
 
   const saveConfigVariables = async () => {

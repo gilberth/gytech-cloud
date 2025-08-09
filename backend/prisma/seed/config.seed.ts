@@ -378,6 +378,94 @@ export const configVariables = {
       defaultValue: "true",
     },
   },
+  storage: {
+    defaultProvider: {
+      type: "string",
+      defaultValue: "LOCAL",
+      secret: false,
+    },
+  },
+  onedrive: {
+    enabled: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+    clientId: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+    clientSecret: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+    tenantId: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+    driveId: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+  },
+  googledrive: {
+    enabled: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+    clientId: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+    clientSecret: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+    refreshToken: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+    parentFolderId: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+  },
+  azureblob: {
+    enabled: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+    accountName: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+    accountKey: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+    sasToken: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+    containerName: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+  },
   legal: {
     enabled: {
       type: "boolean",
