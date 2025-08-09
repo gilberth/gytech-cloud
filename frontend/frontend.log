@@ -401,3 +401,5 @@ Error: [@formatjs/intl Error MISSING_TRANSLATION] Missing message: "admin.config
  POST /api/auth/token 200 in 22ms
  POST /api/auth/token 200 in 107ms
  POST /api/auth/token 200 in 28ms
+ POST /api/auth/token 200 in 37ms
+ POST /api/auth/token 200 in 34ms

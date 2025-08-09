@@ -133,6 +133,33 @@ model File {
 
   shareId String
   share   Share  @relation(fields: [shareId], references: [id], onDelete: Cascade)
+
+  storageLocations FileStorageLocation[]
+}
+
+model FileStorageLocation {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fileId    String
+  file      File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  provider    String  // LOCAL, S3, ONEDRIVE, GOOGLE_DRIVE, AZURE_BLOB
+  storedPath  String
+  state       String  // LOCAL_ONLY, SYNCING, SYNCED, FAILED, DEPRECATED
+  checksum    String?
+  sizeBytes   BigInt?
+
+  lastAttemptAt DateTime?
+  attempts      Int      @default(0)
+  lastSyncAt    DateTime?
+  errorCode     String?
+  errorMessage  String?
+
+  @@unique([fileId, provider], name: "fileId_provider")
+  @@index([state])
+  @@index([provider, state])
 }
 
 model ShareSecurity {

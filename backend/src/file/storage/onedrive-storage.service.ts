@@ -1,487 +1,353 @@
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AuthenticationProvider, Client } from '@microsoft/microsoft-graph-client';
+import { BaseStorageService } from './base-storage.service';
 import {
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from "@nestjs/common";
-import { PrismaService } from "src/prisma/prisma.service";
-import { ConfigService } from "src/config/config.service";
-import { BaseStorageService } from "./base-storage.service";
-import {
-  StorageProvider,
-  ChunkContext,
-  FileContext,
-  StorageFile,
+  CloudStorageCapabilities,
+  UploadParams,
+  UploadResult,
+  DownloadOptions,
   FileMetadata,
-  StorageFeature,
-} from "./cloud-storage.interface";
-import { Readable } from "stream";
-import { Client } from '@microsoft/microsoft-graph-client';
-import { AuthenticationProvider } from '@microsoft/microsoft-graph-client';
-import { ConfidentialClientApplication } from '@azure/msal-node';
-import * as mime from "mime-types";
-import * as archiver from "archiver";
+  PresignedUrlOptions,
+  MultipartUploadInit,
+  MultipartUploadPart,
+  HealthCheckResult,
+} from './cloud-storage.interface';
 
-/**
- * Custom authentication provider for Microsoft Graph API
- */
+export interface OneDriveConfig {
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+  refreshToken?: string;
+  accessToken?: string;
+  rootPath?: string;
+}
+
 class OneDriveAuthProvider implements AuthenticationProvider {
-  private msalClient: ConfidentialClientApplication;
   private accessToken: string | null = null;
-  private tokenExpiry: Date | null = null;
+  private refreshToken: string;
+  private clientId: string;
+  private clientSecret: string;
+  private tenantId: string;
 
-  constructor(
-    private clientId: string,
-    private clientSecret: string,
-    private tenantId: string,
-  ) {
-    this.msalClient = new ConfidentialClientApplication({
-      auth: {
-        clientId: this.clientId,
-        clientSecret: this.clientSecret,
-        authority: `https://login.microsoftonline.com/${this.tenantId}`,
-      },
-    });
+  constructor(config: OneDriveConfig) {
+    this.accessToken = config.accessToken || null;
+    this.refreshToken = config.refreshToken;
+    this.clientId = config.clientId;
+    this.clientSecret = config.clientSecret;
+    this.tenantId = config.tenantId;
   }
 
   async getAccessToken(): Promise<string> {
-    // Check if we have a valid token
-    if (this.accessToken && this.tokenExpiry && new Date() < this.tokenExpiry) {
+    if (this.accessToken) {
       return this.accessToken;
     }
 
-    try {
-      // Get new token using client credentials flow
-      const response = await this.msalClient.acquireTokenByClientCredential({
-        scopes: ['https://graph.microsoft.com/.default'],
-      });
+    const response = await fetch(
+      `https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          refresh_token: this.refreshToken,
+          grant_type: 'refresh_token',
+          scope: 'https://graph.microsoft.com/Files.ReadWrite.All offline_access',
+        }),
+      },
+    );
 
-      if (response && response.accessToken) {
-        this.accessToken = response.accessToken;
-        this.tokenExpiry = new Date(Date.now() + (response.expiresOn?.getTime() || 3600000));
-        return this.accessToken;
-      }
-
-      throw new Error('Failed to acquire access token');
-    } catch (error) {
-      throw new Error(`Authentication failed: ${error.message}`);
+    if (!response.ok) {
+      throw new Error(`Failed to refresh OneDrive token: ${response.statusText}`);
     }
+
+    const data = await response.json();
+    this.accessToken = data.access_token;
+    
+    return this.accessToken;
   }
 }
 
-/**
- * OneDrive/SharePoint storage service using Microsoft Graph API
- */
 @Injectable()
 export class OneDriveStorageService extends BaseStorageService {
-  readonly provider = StorageProvider.ONEDRIVE;
-  private graphClient: Client | null = null;
-  private authProvider: OneDriveAuthProvider | null = null;
-  private driveId: string | null = null;
-  private uploadSessions = new Map<string, string>(); // fileId -> uploadUrl
+  readonly name = 'OneDrive';
+  readonly capabilities: CloudStorageCapabilities = {
+    streaming: true,
+    multipart: true,
+    presignedUrls: false,
+    nativeMetadata: true,
+    serverSideEncryption: true,
+    versioning: true,
+  };
 
-  constructor(
-    prisma: PrismaService,
-    config: ConfigService,
-  ) {
-    super(prisma, config);
+  private client: Client;
+  private rootPath: string;
+
+  constructor(private configService: ConfigService) {
+    super();
+    this.initializeClient();
   }
 
-  async initialize(config: Record<string, any>): Promise<void> {
-    const { clientId, clientSecret, tenantId, driveId } = config;
-    
-    if (!clientId || !clientSecret || !tenantId) {
-      throw new BadRequestException("Missing OneDrive configuration");
+  private initializeClient() {
+    const config: OneDriveConfig = {
+      clientId: this.configService.get<string>('ONEDRIVE_CLIENT_ID'),
+      clientSecret: this.configService.get<string>('ONEDRIVE_CLIENT_SECRET'),
+      tenantId: this.configService.get<string>('ONEDRIVE_TENANT_ID'),
+      refreshToken: this.configService.get<string>('ONEDRIVE_REFRESH_TOKEN'),
+      rootPath: this.configService.get<string>('ONEDRIVE_ROOT_PATH', '/'),
+    };
+
+    if (!config.clientId || !config.clientSecret || !config.tenantId) {
+      throw new Error('OneDrive configuration is incomplete');
     }
 
-    this.authProvider = new OneDriveAuthProvider(clientId, clientSecret, tenantId);
-    this.driveId = driveId || 'me/drive'; // Default to user's personal drive
-    
-    // Initialize Graph client
-    this.graphClient = Client.initWithMiddleware({
-      authProvider: {
-        getAccessToken: async () => {
-          return await this.authProvider!.getAccessToken();
+    this.rootPath = config.rootPath;
+    const authProvider = new OneDriveAuthProvider(config);
+    this.client = Client.initWithMiddleware({ authProvider });
+  }
+
+  async upload(params: UploadParams): Promise<UploadResult> {
+    try {
+      const filePath = this.buildPath(`${this.rootPath}/${params.path}`);
+      
+      const chunks: Buffer[] = [];
+      
+      return new Promise((resolve, reject) => {
+        params.stream.on('data', (chunk) => chunks.push(chunk));
+        params.stream.on('end', async () => {
+          try {
+            const buffer = Buffer.concat(chunks);
+            
+            const response = await this.client
+              .api(`/me/drive/root:/${filePath}:/content`)
+              .putStream(buffer);
+
+            resolve({
+              storedPath: filePath,
+              etag: response.eTag,
+            });
+          } catch (error) {
+            this.handleStorageError(error, 'upload');
+          }
+        });
+        params.stream.on('error', reject);
+      });
+    } catch (error) {
+      this.handleStorageError(error, 'upload');
+    }
+  }
+
+  async download(
+    path: string,
+    options?: DownloadOptions,
+  ): Promise<NodeJS.ReadableStream> {
+    try {
+      const filePath = this.buildPath(`${this.rootPath}/${path}`);
+      const headers: Record<string, string> = {};
+      
+      if (options?.range) {
+        const { start, end } = options.range;
+        headers.Range = `bytes=${start}-${end || ''}`;
+      }
+
+      const response = await this.client
+        .api(`/me/drive/root:/${filePath}:/content`)
+        .headers(headers)
+        .getStream();
+
+      return response;
+    } catch (error) {
+      this.handleStorageError(error, 'download');
+    }
+  }
+
+  async delete(path: string): Promise<void> {
+    try {
+      const filePath = this.buildPath(`${this.rootPath}/${path}`);
+      
+      await this.client
+        .api(`/me/drive/root:/${filePath}`)
+        .delete();
+    } catch (error) {
+      this.handleStorageError(error, 'delete');
+    }
+  }
+
+  async getMetadata(path: string): Promise<FileMetadata> {
+    try {
+      const filePath = this.buildPath(`${this.rootPath}/${path}`);
+      
+      const response = await this.client
+        .api(`/me/drive/root:/${filePath}`)
+        .get();
+
+      return {
+        size: response.size,
+        contentType: response.file?.mimeType,
+        lastModified: new Date(response.lastModifiedDateTime),
+        etag: response.eTag,
+        metadata: {
+          id: response.id,
+          name: response.name,
+          webUrl: response.webUrl,
         },
-      },
-    });
-  }
-
-  async testConnection(): Promise<boolean> {
-    try {
-      if (!this.graphClient) {
-        return false;
-      }
-
-      // Test by getting drive information
-      await this.graphClient.api(`/${this.driveId}`).get();
-      return true;
+      };
     } catch (error) {
-      this.logger.error("OneDrive connection test failed:", error);
-      return false;
+      this.handleStorageError(error, 'getMetadata');
     }
   }
 
-  protected async uploadChunk(
-    data: string,
-    chunk: ChunkContext,
-    file: FileContext,
-    shareId: string,
-  ): Promise<void> {
-    if (!this.graphClient) {
-      throw new InternalServerErrorException("OneDrive client not initialized");
-    }
-
-    const buffer = Buffer.from(data, 'base64');
-    const folderPath = `GYTECH-Cloud/${shareId}`;
-    const filePath = `${folderPath}/${file.name}`;
-
+  async multipartInit(
+    path: string,
+    size?: number,
+    contentType?: string,
+    metadata?: Record<string, string>,
+  ): Promise<MultipartUploadInit> {
     try {
-      if (chunk.index === 0) {
-        // Initialize upload session for the first chunk
-        await this.initializeUploadSession(filePath, file.id!);
-      }
-
-      const uploadUrl = this.uploadSessions.get(file.id!);
-      if (!uploadUrl) {
-        throw new Error("Upload session not found");
-      }
-
-      // Calculate byte range for this chunk
-      const chunkSize = this.config.get("share.chunkSize");
-      const startByte = chunk.index * chunkSize;
-      const endByte = startByte + buffer.length - 1;
-
-      // Upload chunk using resumable upload session
-      await this.uploadChunkToSession(uploadUrl, buffer, startByte, endByte);
-
-      // Clean up session if this is the last chunk
-      if (chunk.index === chunk.total - 1) {
-        this.uploadSessions.delete(file.id!);
-      }
-    } catch (error) {
-      this.logger.error(`OneDrive chunk upload failed:`, error);
-      await this.cleanupFailedUpload(shareId, file.id);
-      throw error;
-    }
-  }
-
-  private async initializeUploadSession(filePath: string, fileId: string): Promise<void> {
-    try {
-      // Create folder if it doesn't exist
-      const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
-      await this.ensureFolderExists(folderPath);
-
-      // Create upload session
-      const uploadSession = await this.graphClient!
-        .api(`/${this.driveId}/root:/${filePath}:/createUploadSession`)
+      const filePath = this.buildPath(`${this.rootPath}/${path}`);
+      
+      const uploadSession = await this.client
+        .api(`/me/drive/root:/${filePath}:/createUploadSession`)
         .post({
           item: {
-            "@microsoft.graph.conflictBehavior": "replace",
+            '@microsoft.graph.conflictBehavior': 'replace',
+            name: path.split('/').pop(),
+            ...(metadata && { description: JSON.stringify(metadata) }),
           },
         });
 
-      this.uploadSessions.set(fileId, uploadSession.uploadUrl);
+      return {
+        uploadId: uploadSession.uploadUrl,
+        metadata: {
+          uploadUrl: uploadSession.uploadUrl,
+          expirationDateTime: uploadSession.expirationDateTime,
+        },
+      };
     } catch (error) {
-      this.logger.error(`Failed to initialize upload session:`, error);
-      throw error;
+      this.handleStorageError(error, 'multipartInit');
     }
   }
 
-  private async uploadChunkToSession(
-    uploadUrl: string,
-    buffer: Buffer,
-    startByte: number,
-    endByte: number,
-  ): Promise<void> {
+  async multipartUploadPart(
+    uploadId: string,
+    partNumber: number,
+    data: Buffer | NodeJS.ReadableStream,
+    size?: number,
+  ): Promise<{ etag: string }> {
     try {
-      const response = await fetch(uploadUrl, {
+      const buffer = Buffer.isBuffer(data) ? data : await this.streamToBuffer(data);
+      const chunkSize = 327680; // 320KB chunks for OneDrive
+      const start = (partNumber - 1) * chunkSize;
+      const end = Math.min(start + buffer.length - 1, size ? size - 1 : buffer.length - 1);
+
+      const response = await fetch(uploadId, {
         method: 'PUT',
         headers: {
-          'Content-Range': `bytes ${startByte}-${endByte}/*`,
+          'Content-Range': `bytes ${start}-${end}/${size || buffer.length}`,
           'Content-Length': buffer.length.toString(),
         },
         body: buffer,
       });
 
-      if (!response.ok && response.status !== 202) {
-        throw new Error(`Chunk upload failed: ${response.statusText}`);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to upload chunk:`, error);
-      throw error;
-    }
-  }
-
-  private async ensureFolderExists(folderPath: string): Promise<void> {
-    try {
-      // Check if folder exists
-      await this.graphClient!.api(`/${this.driveId}/root:/${folderPath}`).get();
-    } catch (error) {
-      // Folder doesn't exist, create it
-      const pathParts = folderPath.split('/');
-      let currentPath = '';
-
-      for (const part of pathParts) {
-        if (!part) continue;
-        
-        const parentPath = currentPath || 'root';
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
-
-        try {
-          await this.graphClient!.api(`/${this.driveId}/${parentPath}:/children`).post({
-            name: part,
-            folder: {},
-            '@microsoft.graph.conflictBehavior': 'ignore',
-          });
-        } catch (createError) {
-          // Ignore if folder already exists
-          if (!createError.message?.includes('already exists')) {
-            throw createError;
-          }
-        }
-      }
-    }
-  }
-
-  async get(shareId: string, fileId: string): Promise<StorageFile> {
-    if (!this.graphClient) {
-      throw new InternalServerErrorException("OneDrive client not initialized");
-    }
-
-    const fileMetadata = await this.prisma.file.findUnique({
-      where: { id: fileId },
-    });
-
-    if (!fileMetadata) {
-      throw new NotFoundException("File not found");
-    }
-
-    const filePath = `GYTECH-Cloud/${shareId}/${fileMetadata.name}`;
-
-    try {
-      // Get file metadata from OneDrive
-      const driveItem = await this.graphClient
-        .api(`/${this.driveId}/root:/${filePath}`)
-        .get();
-
-      // Get download URL
-      const downloadUrl = driveItem['@microsoft.graph.downloadUrl'];
-      
-      // Create readable stream from download URL
-      const response = await fetch(downloadUrl);
       if (!response.ok) {
-        throw new Error(`Failed to download file: ${response.statusText}`);
+        throw new Error(`Upload part failed: ${response.statusText}`);
       }
+
+      const result = await response.json();
+      return { etag: result.eTag || `part-${partNumber}` };
+    } catch (error) {
+      this.handleStorageError(error, 'multipartUploadPart');
+    }
+  }
+
+  async multipartComplete(
+    uploadId: string,
+    path: string,
+    parts: MultipartUploadPart[],
+  ): Promise<UploadResult> {
+    return {
+      storedPath: path,
+      etag: `completed-${Date.now()}`,
+    };
+  }
+
+  async multipartAbort(uploadId: string, path: string): Promise<void> {
+    try {
+      await fetch(uploadId, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to abort OneDrive upload session: ${error.message}`);
+    }
+  }
+
+  async healthCheck(): Promise<HealthCheckResult> {
+    try {
+      const { result, latencyMs } = await this.measureLatency(async () => {
+        return await this.client.api('/me/drive').get();
+      });
 
       return {
-        metaData: {
-          id: fileId,
-          name: fileMetadata.name,
-          size: fileMetadata.size,
-          shareId: shareId,
-          createdAt: new Date(driveItem.createdDateTime),
-          mimeType: mime.contentType(fileMetadata.name.split(".").pop()) || "application/octet-stream",
+        ok: true,
+        latencyMs,
+        details: {
+          driveType: result.driveType,
+          quota: result.quota,
         },
-        file: response.body as unknown as Readable,
       };
     } catch (error) {
-      this.logger.error(`Failed to get file from OneDrive:`, error);
-      throw new NotFoundException("File not found in OneDrive");
+      return {
+        ok: false,
+        errorMessage: error.message,
+        details: { provider: this.name },
+      };
     }
   }
 
-  async remove(shareId: string, fileId: string): Promise<void> {
-    if (!this.graphClient) {
-      throw new InternalServerErrorException("OneDrive client not initialized");
-    }
-
-    const fileMetadata = await this.prisma.file.findUnique({
-      where: { id: fileId },
-    });
-
-    if (!fileMetadata) {
-      throw new NotFoundException("File not found");
-    }
-
-    const filePath = `GYTECH-Cloud/${shareId}/${fileMetadata.name}`;
-
+  async listFiles(
+    prefix?: string,
+    limit?: number,
+    continuationToken?: string,
+  ) {
     try {
-      // Delete file from OneDrive
-      await this.graphClient.api(`/${this.driveId}/root:/${filePath}`).delete();
+      const folderPath = this.buildPath(`${this.rootPath}/${prefix || ''}`);
+      let query = this.client.api(`/me/drive/root:/${folderPath}:/children`);
       
-      // Delete database record
-      await this.prisma.file.delete({ where: { id: fileId } });
-    } catch (error) {
-      this.logger.error(`Failed to delete file from OneDrive:`, error);
-      throw new InternalServerErrorException("Could not delete file from OneDrive");
-    }
-  }
-
-  async deleteAllFiles(shareId: string): Promise<void> {
-    if (!this.graphClient) {
-      throw new InternalServerErrorException("OneDrive client not initialized");
-    }
-
-    const folderPath = `GYTECH-Cloud/${shareId}`;
-
-    try {
-      // Delete entire share folder
-      await this.graphClient.api(`/${this.driveId}/root:/${folderPath}`).delete();
-    } catch (error) {
-      this.logger.error(`Failed to delete share folder from OneDrive:`, error);
-      throw new InternalServerErrorException("Could not delete share folder from OneDrive");
-    }
-  }
-
-  async getZip(shareId: string): Promise<Readable> {
-    if (!this.graphClient) {
-      throw new InternalServerErrorException("OneDrive client not initialized");
-    }
-
-    const folderPath = `GYTECH-Cloud/${shareId}`;
-
-    return new Promise<Readable>(async (resolve, reject) => {
-      try {
-        // Get all files in the share folder
-        const folderContents = await this.graphClient!
-          .api(`/${this.driveId}/root:/${folderPath}:/children`)
-          .get();
-
-        const compressionLevel = this.config.get("share.zipCompressionLevel");
-        const archive = archiver("zip", {
-          zlib: { level: parseInt(compressionLevel) },
-        });
-
-        archive.on("error", (err) => {
-          this.logger.error("Archive error", err);
-          reject(new InternalServerErrorException("Error creating ZIP file"));
-        });
-
-        if (!folderContents.value || folderContents.value.length === 0) {
-          throw new NotFoundException(`No files found for share ${shareId}`);
-        }
-
-        let filesProcessed = 0;
-        const totalFiles = folderContents.value.length;
-
-        // Process each file
-        for (const item of folderContents.value) {
-          if (item.file) { // Only process files, not folders
-            try {
-              const downloadUrl = item['@microsoft.graph.downloadUrl'];
-              const response = await fetch(downloadUrl);
-              
-              if (response.ok) {
-                const fileStream = response.body as unknown as Readable;
-                archive.append(fileStream, { name: item.name });
-              }
-            } catch (error) {
-              this.logger.error(`Error processing file ${item.name}:`, error);
-            }
-
-            filesProcessed++;
-            if (filesProcessed === totalFiles) {
-              archive.finalize();
-            }
-          }
-        }
-
-        resolve(archive);
-      } catch (error) {
-        this.logger.error("Error creating ZIP from OneDrive:", error);
-        reject(new InternalServerErrorException("Error creating ZIP file"));
+      if (limit) {
+        query = query.top(limit);
       }
-    });
-  }
-
-  async getFileSize(shareId: string, fileName: string): Promise<number> {
-    if (!this.graphClient) {
-      throw new InternalServerErrorException("OneDrive client not initialized");
-    }
-
-    const filePath = `GYTECH-Cloud/${shareId}/${fileName}`;
-
-    try {
-      const driveItem = await this.graphClient
-        .api(`/${this.driveId}/root:/${filePath}`)
-        .get();
-
-      return driveItem.size || 0;
-    } catch (error) {
-      this.logger.error(`Failed to get file size from OneDrive:`, error);
-      throw new Error("Could not retrieve file size");
-    }
-  }
-
-  async getAvailableSpace(): Promise<number | null> {
-    if (!this.graphClient) {
-      throw new InternalServerErrorException("OneDrive client not initialized");
-    }
-
-    try {
-      const drive = await this.graphClient.api(`/${this.driveId}`).get();
-      return drive.quota?.remaining || null;
-    } catch (error) {
-      this.logger.error("Failed to get OneDrive quota:", error);
-      return null;
-    }
-  }
-
-  async listFiles(shareId: string): Promise<FileMetadata[]> {
-    const files = await this.prisma.file.findMany({
-      where: { shareId },
-      select: { id: true, name: true, size: true, createdAt: true },
-    });
-
-    return files.map(file => ({
-      id: file.id,
-      name: file.name,
-      size: file.size,
-      shareId,
-      createdAt: file.createdAt,
-      mimeType: mime.contentType(file.name.split(".").pop()) || "application/octet-stream",
-    }));
-  }
-
-  supportsFeature(feature: StorageFeature): boolean {
-    switch (feature) {
-      case StorageFeature.CHUNKED_UPLOAD:
-        return true;
-      case StorageFeature.DIRECT_DOWNLOAD:
-        return true;
-      case StorageFeature.SPACE_QUOTA:
-        return true;
-      case StorageFeature.FILE_VERSIONING:
-        return false;
-      case StorageFeature.BATCH_OPERATIONS:
-        return false;
-      case StorageFeature.STREAMING_UPLOAD:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  protected async cleanupFailedUpload(shareId: string, fileId?: string): Promise<void> {
-    if (fileId) {
-      // Remove upload session
-      this.uploadSessions.delete(fileId);
       
-      // Try to delete partial file from OneDrive
-      try {
-        const fileMetadata = await this.prisma.file.findUnique({
-          where: { id: fileId },
-        });
-        
-        if (fileMetadata && this.graphClient) {
-          const filePath = `GYTECH-Cloud/${shareId}/${fileMetadata.name}`;
-          await this.graphClient.api(`/${this.driveId}/root:/${filePath}`).delete();
-        }
-      } catch (error) {
-        this.logger.warn(`Failed to cleanup partial file:`, error);
+      if (continuationToken) {
+        query = query.skipToken(continuationToken);
       }
+
+      const response = await query.get();
+
+      return {
+        files: response.value.map((item: any) => ({
+          path: item.name,
+          size: item.size,
+          lastModified: new Date(item.lastModifiedDateTime),
+          etag: item.eTag,
+        })),
+        continuationToken: response['@odata.nextLink'] ? 
+          new URL(response['@odata.nextLink']).searchParams.get('$skiptoken') : 
+          undefined,
+      };
+    } catch (error) {
+      this.handleStorageError(error, 'listFiles');
     }
+  }
+
+  private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
+    });
   }
 }

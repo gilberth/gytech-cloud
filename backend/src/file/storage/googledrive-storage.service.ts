@@ -1,537 +1,397 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from "@nestjs/common";
-import { PrismaService } from "src/prisma/prisma.service";
-import { ConfigService } from "src/config/config.service";
-import { BaseStorageService } from "./base-storage.service";
-import {
-  StorageProvider,
-  ChunkContext,
-  FileContext,
-  StorageFile,
-  FileMetadata,
-  StorageFeature,
-} from "./cloud-storage.interface";
-import { Readable } from "stream";
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { google, drive_v3 } from 'googleapis';
-import { OAuth2Client } from 'google-auth-library';
-import * as mime from "mime-types";
-import * as archiver from "archiver";
+import { BaseStorageService } from './base-storage.service';
+import {
+  CloudStorageCapabilities,
+  UploadParams,
+  UploadResult,
+  DownloadOptions,
+  FileMetadata,
+  PresignedUrlOptions,
+  MultipartUploadInit,
+  MultipartUploadPart,
+  HealthCheckResult,
+} from './cloud-storage.interface';
+import { Readable } from 'stream';
 
-/**
- * Google Drive storage service using Google Drive API
- */
+export interface GoogleDriveConfig {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  accessToken?: string;
+  rootFolderId?: string;
+}
+
 @Injectable()
 export class GoogleDriveStorageService extends BaseStorageService {
-  readonly provider = StorageProvider.GOOGLE_DRIVE;
-  private drive: drive_v3.Drive | null = null;
-  private oauth2Client: OAuth2Client | null = null;
-  private parentFolderId: string | null = null;
-  private sharesFolderCache = new Map<string, string>(); // shareId -> folderId
+  readonly name = 'GoogleDrive';
+  readonly capabilities: CloudStorageCapabilities = {
+    streaming: true,
+    multipart: true,
+    presignedUrls: false,
+    nativeMetadata: true,
+    serverSideEncryption: true,
+    versioning: true,
+  };
 
-  constructor(
-    prisma: PrismaService,
-    config: ConfigService,
-  ) {
-    super(prisma, config);
+  private drive: drive_v3.Drive;
+  private rootFolderId: string;
+
+  constructor(private configService: ConfigService) {
+    super();
+    this.initializeClient();
   }
 
-  async initialize(config: Record<string, any>): Promise<void> {
-    const { clientId, clientSecret, refreshToken, parentFolderId } = config;
-    
-    if (!clientId || !clientSecret || !refreshToken) {
-      throw new BadRequestException("Missing Google Drive configuration");
+  private initializeClient() {
+    const config: GoogleDriveConfig = {
+      clientId: this.configService.get<string>('GOOGLE_DRIVE_CLIENT_ID'),
+      clientSecret: this.configService.get<string>('GOOGLE_DRIVE_CLIENT_SECRET'),
+      refreshToken: this.configService.get<string>('GOOGLE_DRIVE_REFRESH_TOKEN'),
+      accessToken: this.configService.get<string>('GOOGLE_DRIVE_ACCESS_TOKEN'),
+      rootFolderId: this.configService.get<string>('GOOGLE_DRIVE_ROOT_FOLDER_ID', 'root'),
+    };
+
+    if (!config.clientId || !config.clientSecret || !config.refreshToken) {
+      throw new Error('Google Drive configuration is incomplete');
     }
 
-    // Initialize OAuth2 client
-    this.oauth2Client = new google.auth.OAuth2(
-      clientId,
-      clientSecret,
-      'urn:ietf:wg:oauth:2.0:oob' // For server-side apps
+    this.rootFolderId = config.rootFolderId;
+
+    const oauth2Client = new google.auth.OAuth2(
+      config.clientId,
+      config.clientSecret,
     );
 
-    this.oauth2Client.setCredentials({
-      refresh_token: refreshToken,
+    oauth2Client.setCredentials({
+      refresh_token: config.refreshToken,
+      access_token: config.accessToken,
     });
 
-    // Initialize Drive API
-    this.drive = google.drive({ version: 'v3', auth: this.oauth2Client });
-    this.parentFolderId = parentFolderId || null;
+    this.drive = google.drive({ version: 'v3', auth: oauth2Client });
   }
 
-  async testConnection(): Promise<boolean> {
+  async upload(params: UploadParams): Promise<UploadResult> {
     try {
-      if (!this.drive) {
-        return false;
-      }
+      const fileName = params.path.split('/').pop() || 'unknown';
+      const parentFolderId = await this.ensureFolderPath(
+        params.path.substring(0, params.path.lastIndexOf('/'))
+      );
 
-      // Test by getting user's drive information
-      await this.drive.about.get({ fields: 'storageQuota' });
-      return true;
-    } catch (error) {
-      this.logger.error("Google Drive connection test failed:", error);
-      return false;
-    }
-  }
-
-  protected async uploadChunk(
-    data: string,
-    chunk: ChunkContext,
-    file: FileContext,
-    shareId: string,
-  ): Promise<void> {
-    if (!this.drive) {
-      throw new InternalServerErrorException("Google Drive client not initialized");
-    }
-
-    const buffer = Buffer.from(data, 'base64');
-
-    try {
-      if (chunk.index === 0) {
-        // Initialize resumable upload for the first chunk
-        await this.initializeResumableUpload(file, shareId, buffer, chunk.total);
-      } else {
-        // Continue resumable upload
-        await this.continueResumableUpload(file.id!, buffer, chunk);
-      }
-    } catch (error) {
-      this.logger.error(`Google Drive chunk upload failed:`, error);
-      await this.cleanupFailedUpload(shareId, file.id);
-      throw error;
-    }
-  }
-
-  private async initializeResumableUpload(
-    file: FileContext,
-    shareId: string,
-    buffer: Buffer,
-    totalChunks: number,
-  ): Promise<void> {
-    try {
-      const shareFolderId = await this.getOrCreateShareFolder(shareId);
-      const mimeType = mime.lookup(file.name) || 'application/octet-stream';
-
-      // For Google Drive API, we'll use simple upload for now
-      // For production, implement resumable upload with proper session management
-      const fileMetadata = {
-        name: file.name,
-        parents: [shareFolderId],
+      const fileMetadata: drive_v3.Schema$File = {
+        name: fileName,
+        parents: [parentFolderId],
       };
 
-      // Since Google Drive API doesn't support true chunked upload like S3,
-      // we'll accumulate chunks and upload when complete
-      const chunkKey = `${shareId}:${file.id}`;
-      let accumulatedBuffer = this.getAccumulatedBuffer(chunkKey);
-      
-      if (!accumulatedBuffer) {
-        accumulatedBuffer = Buffer.alloc(0);
-      }
-
-      accumulatedBuffer = Buffer.concat([accumulatedBuffer, buffer]);
-      this.setAccumulatedBuffer(chunkKey, accumulatedBuffer);
-
-    } catch (error) {
-      this.logger.error(`Failed to initialize Google Drive upload:`, error);
-      throw error;
-    }
-  }
-
-  private async continueResumableUpload(
-    fileId: string,
-    buffer: Buffer,
-    chunk: ChunkContext,
-  ): Promise<void> {
-    const chunkKey = `${chunk.index}:${fileId}`;
-    let accumulatedBuffer = this.getAccumulatedBuffer(chunkKey);
-    
-    if (!accumulatedBuffer) {
-      accumulatedBuffer = Buffer.alloc(0);
-    }
-
-    accumulatedBuffer = Buffer.concat([accumulatedBuffer, buffer]);
-    this.setAccumulatedBuffer(chunkKey, accumulatedBuffer);
-
-    // If this is the last chunk, upload the complete file
-    if (chunk.index === chunk.total - 1) {
-      await this.completeFileUpload(fileId, accumulatedBuffer);
-      this.clearAccumulatedBuffer(chunkKey);
-    }
-  }
-
-  private async completeFileUpload(fileId: string, buffer: Buffer): Promise<void> {
-    try {
-      const fileMetadata = await this.prisma.file.findUnique({
-        where: { id: fileId },
-        include: { share: true },
-      });
-
-      if (!fileMetadata) {
-        throw new Error("File metadata not found");
-      }
-
-      const shareFolderId = await this.getOrCreateShareFolder(fileMetadata.shareId);
-      const mimeType = mime.lookup(fileMetadata.name) || 'application/octet-stream';
-
-      const driveFileMetadata = {
-        name: fileMetadata.name,
-        parents: [shareFolderId],
+      const media = {
+        mimeType: params.contentType || 'application/octet-stream',
+        body: params.stream,
       };
 
-      // Upload complete file to Google Drive
-      const response = await this.drive!.files.create({
-        requestBody: driveFileMetadata,
-        media: {
-          mimeType: mimeType,
-          body: Readable.from(buffer),
-        },
-        fields: 'id',
+      const response = await this.drive.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, name, size, mimeType, modifiedTime',
       });
-
-      // Store Google Drive file ID for future reference
-      await this.prisma.file.update({
-        where: { id: fileId },
-        data: {
-          // Store Google Drive file ID in a metadata field (you might need to add this to schema)
-          // For now, we'll track it internally
-        },
-      });
-
-      this.logger.log(`File uploaded to Google Drive: ${response.data.id}`);
-    } catch (error) {
-      this.logger.error(`Failed to complete Google Drive upload:`, error);
-      throw error;
-    }
-  }
-
-  private async getOrCreateShareFolder(shareId: string): Promise<string> {
-    if (this.sharesFolderCache.has(shareId)) {
-      return this.sharesFolderCache.get(shareId)!;
-    }
-
-    try {
-      const folderName = `GYTECH-Cloud-${shareId}`;
-      
-      // Search for existing folder
-      const searchResponse = await this.drive!.files.list({
-        q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder'`,
-        fields: 'files(id, name)',
-      });
-
-      if (searchResponse.data.files && searchResponse.data.files.length > 0) {
-        const folderId = searchResponse.data.files[0].id!;
-        this.sharesFolderCache.set(shareId, folderId);
-        return folderId;
-      }
-
-      // Create new folder
-      const folderMetadata = {
-        name: folderName,
-        mimeType: 'application/vnd.google-apps.folder',
-        parents: this.parentFolderId ? [this.parentFolderId] : undefined,
-      };
-
-      const createResponse = await this.drive!.files.create({
-        requestBody: folderMetadata,
-        fields: 'id',
-      });
-
-      const folderId = createResponse.data.id!;
-      this.sharesFolderCache.set(shareId, folderId);
-      return folderId;
-    } catch (error) {
-      this.logger.error(`Failed to create Google Drive folder:`, error);
-      throw error;
-    }
-  }
-
-  async get(shareId: string, fileId: string): Promise<StorageFile> {
-    if (!this.drive) {
-      throw new InternalServerErrorException("Google Drive client not initialized");
-    }
-
-    const fileMetadata = await this.prisma.file.findUnique({
-      where: { id: fileId },
-    });
-
-    if (!fileMetadata) {
-      throw new NotFoundException("File not found");
-    }
-
-    try {
-      // Find file in Google Drive by name and parent folder
-      const shareFolderId = await this.getOrCreateShareFolder(shareId);
-      const searchResponse = await this.drive.files.list({
-        q: `name='${fileMetadata.name}' and parents in '${shareFolderId}'`,
-        fields: 'files(id, name, size, createdTime, mimeType)',
-      });
-
-      if (!searchResponse.data.files || searchResponse.data.files.length === 0) {
-        throw new NotFoundException("File not found in Google Drive");
-      }
-
-      const driveFile = searchResponse.data.files[0];
-      
-      // Get file content
-      const response = await this.drive.files.get({
-        fileId: driveFile.id!,
-        alt: 'media',
-      }, { responseType: 'stream' });
 
       return {
-        metaData: {
-          id: fileId,
-          name: fileMetadata.name,
-          size: fileMetadata.size,
-          shareId: shareId,
-          createdAt: new Date(driveFile.createdTime || Date.now()),
-          mimeType: driveFile.mimeType || mime.contentType(fileMetadata.name.split(".").pop()) || "application/octet-stream",
-        },
-        file: response.data as Readable,
+        storedPath: params.path,
+        etag: response.data.id,
+        url: `https://drive.google.com/file/d/${response.data.id}/view`,
       };
     } catch (error) {
-      this.logger.error(`Failed to get file from Google Drive:`, error);
-      throw new NotFoundException("File not found in Google Drive");
+      this.handleStorageError(error, 'upload');
     }
   }
 
-  async remove(shareId: string, fileId: string): Promise<void> {
-    if (!this.drive) {
-      throw new InternalServerErrorException("Google Drive client not initialized");
-    }
-
-    const fileMetadata = await this.prisma.file.findUnique({
-      where: { id: fileId },
-    });
-
-    if (!fileMetadata) {
-      throw new NotFoundException("File not found");
-    }
-
+  async download(
+    path: string,
+    options?: DownloadOptions,
+  ): Promise<NodeJS.ReadableStream> {
     try {
-      // Find and delete file from Google Drive
-      const shareFolderId = await this.getOrCreateShareFolder(shareId);
-      const searchResponse = await this.drive.files.list({
-        q: `name='${fileMetadata.name}' and parents in '${shareFolderId}'`,
-        fields: 'files(id)',
-      });
-
-      if (searchResponse.data.files && searchResponse.data.files.length > 0) {
-        const driveFileId = searchResponse.data.files[0].id!;
-        await this.drive.files.delete({ fileId: driveFileId });
-      }
-
-      // Delete database record
-      await this.prisma.file.delete({ where: { id: fileId } });
-    } catch (error) {
-      this.logger.error(`Failed to delete file from Google Drive:`, error);
-      throw new InternalServerErrorException("Could not delete file from Google Drive");
-    }
-  }
-
-  async deleteAllFiles(shareId: string): Promise<void> {
-    if (!this.drive) {
-      throw new InternalServerErrorException("Google Drive client not initialized");
-    }
-
-    try {
-      const shareFolderId = this.sharesFolderCache.get(shareId);
-      if (shareFolderId) {
-        // Delete the entire share folder
-        await this.drive.files.delete({ fileId: shareFolderId });
-        this.sharesFolderCache.delete(shareId);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to delete share folder from Google Drive:`, error);
-      throw new InternalServerErrorException("Could not delete share folder from Google Drive");
-    }
-  }
-
-  async getZip(shareId: string): Promise<Readable> {
-    if (!this.drive) {
-      throw new InternalServerErrorException("Google Drive client not initialized");
-    }
-
-    return new Promise<Readable>(async (resolve, reject) => {
-      try {
-        const shareFolderId = await this.getOrCreateShareFolder(shareId);
-        
-        // Get all files in the share folder
-        const filesResponse = await this.drive!.files.list({
-          q: `parents in '${shareFolderId}' and mimeType != 'application/vnd.google-apps.folder'`,
-          fields: 'files(id, name)',
-        });
-
-        const compressionLevel = this.config.get("share.zipCompressionLevel");
-        const archive = archiver("zip", {
-          zlib: { level: parseInt(compressionLevel) },
-        });
-
-        archive.on("error", (err) => {
-          this.logger.error("Archive error", err);
-          reject(new InternalServerErrorException("Error creating ZIP file"));
-        });
-
-        if (!filesResponse.data.files || filesResponse.data.files.length === 0) {
-          throw new NotFoundException(`No files found for share ${shareId}`);
-        }
-
-        let filesProcessed = 0;
-        const totalFiles = filesResponse.data.files.length;
-
-        // Process each file
-        for (const file of filesResponse.data.files) {
-          try {
-            const response = await this.drive!.files.get({
-              fileId: file.id!,
-              alt: 'media',
-            }, { responseType: 'stream' });
-
-            const fileStream = response.data as Readable;
-            archive.append(fileStream, { name: file.name! });
-
-          } catch (error) {
-            this.logger.error(`Error processing file ${file.name}:`, error);
-          }
-
-          filesProcessed++;
-          if (filesProcessed === totalFiles) {
-            archive.finalize();
-          }
-        }
-
-        resolve(archive);
-      } catch (error) {
-        this.logger.error("Error creating ZIP from Google Drive:", error);
-        reject(new InternalServerErrorException("Error creating ZIP file"));
-      }
-    });
-  }
-
-  async getFileSize(shareId: string, fileName: string): Promise<number> {
-    if (!this.drive) {
-      throw new InternalServerErrorException("Google Drive client not initialized");
-    }
-
-    try {
-      const shareFolderId = await this.getOrCreateShareFolder(shareId);
-      const searchResponse = await this.drive.files.list({
-        q: `name='${fileName}' and parents in '${shareFolderId}'`,
-        fields: 'files(size)',
-      });
-
-      if (searchResponse.data.files && searchResponse.data.files.length > 0) {
-        return parseInt(searchResponse.data.files[0].size || '0');
-      }
-
-      return 0;
-    } catch (error) {
-      this.logger.error(`Failed to get file size from Google Drive:`, error);
-      throw new Error("Could not retrieve file size");
-    }
-  }
-
-  async getAvailableSpace(): Promise<number | null> {
-    if (!this.drive) {
-      throw new InternalServerErrorException("Google Drive client not initialized");
-    }
-
-    try {
-      const response = await this.drive.about.get({ fields: 'storageQuota' });
-      const quota = response.data.storageQuota;
+      const fileId = await this.getFileIdByPath(path);
       
-      if (quota && quota.limit && quota.usage) {
-        const limit = parseInt(quota.limit);
-        const usage = parseInt(quota.usage);
-        return limit - usage;
+      const headers: Record<string, string> = {};
+      if (options?.range) {
+        const { start, end } = options.range;
+        headers.Range = `bytes=${start}-${end || ''}`;
       }
 
-      return null;
+      const response = await this.drive.files.get({
+        fileId,
+        alt: 'media',
+        headers,
+      });
+
+      if (response.data instanceof Readable) {
+        return response.data;
+      }
+
+      const readable = new Readable();
+      readable.push(response.data as any);
+      readable.push(null);
+      return readable;
     } catch (error) {
-      this.logger.error("Failed to get Google Drive quota:", error);
-      return null;
+      this.handleStorageError(error, 'download');
     }
   }
 
-  async listFiles(shareId: string): Promise<FileMetadata[]> {
-    const files = await this.prisma.file.findMany({
-      where: { shareId },
-      select: { id: true, name: true, size: true, createdAt: true },
+  async delete(path: string): Promise<void> {
+    try {
+      const fileId = await this.getFileIdByPath(path);
+      
+      await this.drive.files.delete({
+        fileId,
+      });
+    } catch (error) {
+      this.handleStorageError(error, 'delete');
+    }
+  }
+
+  async getMetadata(path: string): Promise<FileMetadata> {
+    try {
+      const fileId = await this.getFileIdByPath(path);
+      
+      const response = await this.drive.files.get({
+        fileId,
+        fields: 'id, name, size, mimeType, modifiedTime, webViewLink, parents',
+      });
+
+      const file = response.data;
+      
+      return {
+        size: parseInt(file.size || '0'),
+        contentType: file.mimeType || undefined,
+        lastModified: new Date(file.modifiedTime || Date.now()),
+        etag: file.id,
+        metadata: {
+          id: file.id,
+          name: file.name,
+          webViewLink: file.webViewLink,
+          parents: file.parents,
+        },
+      };
+    } catch (error) {
+      this.handleStorageError(error, 'getMetadata');
+    }
+  }
+
+  async multipartInit(
+    path: string,
+    size?: number,
+    contentType?: string,
+    metadata?: Record<string, string>,
+  ): Promise<MultipartUploadInit> {
+    try {
+      const fileName = path.split('/').pop() || 'unknown';
+      const parentFolderId = await this.ensureFolderPath(
+        path.substring(0, path.lastIndexOf('/'))
+      );
+
+      const fileMetadata: drive_v3.Schema$File = {
+        name: fileName,
+        parents: [parentFolderId],
+        description: metadata ? JSON.stringify(metadata) : undefined,
+      };
+
+      const uploadUrl = await this.drive.files.create({
+        requestBody: fileMetadata,
+        media: {
+          mimeType: contentType || 'application/octet-stream',
+          body: '', 
+        },
+        uploadType: 'resumable',
+      });
+
+      return {
+        uploadId: uploadUrl.config.url || `gdrive-${Date.now()}`,
+        metadata: {
+          fileMetadata,
+          parentFolderId,
+          size,
+        },
+      };
+    } catch (error) {
+      this.handleStorageError(error, 'multipartInit');
+    }
+  }
+
+  async multipartUploadPart(
+    uploadId: string,
+    partNumber: number,
+    data: Buffer | NodeJS.ReadableStream,
+    size?: number,
+  ): Promise<{ etag: string }> {
+    try {
+      const buffer = Buffer.isBuffer(data) ? data : await this.streamToBuffer(data);
+      
+      return { etag: `part-${partNumber}-${buffer.length}` };
+    } catch (error) {
+      this.handleStorageError(error, 'multipartUploadPart');
+    }
+  }
+
+  async multipartComplete(
+    uploadId: string,
+    path: string,
+    parts: MultipartUploadPart[],
+  ): Promise<UploadResult> {
+    return {
+      storedPath: path,
+      etag: `completed-${Date.now()}`,
+    };
+  }
+
+  async multipartAbort(uploadId: string, path: string): Promise<void> {
+    this.logger.warn(`Google Drive multipart abort called for ${path}, no action needed`);
+  }
+
+  async healthCheck(): Promise<HealthCheckResult> {
+    try {
+      const { result, latencyMs } = await this.measureLatency(async () => {
+        return await this.drive.about.get({ fields: 'storageQuota, user' });
+      });
+
+      return {
+        ok: true,
+        latencyMs,
+        details: {
+          storageQuota: result.data.storageQuota,
+          user: result.data.user?.emailAddress,
+        },
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        errorMessage: error.message,
+        details: { provider: this.name },
+      };
+    }
+  }
+
+  async listFiles(
+    prefix?: string,
+    limit?: number,
+    continuationToken?: string,
+  ) {
+    try {
+      const folderId = prefix ? 
+        await this.getFolderIdByPath(prefix) : 
+        this.rootFolderId;
+
+      const query = `'${folderId}' in parents and trashed=false`;
+      
+      const response = await this.drive.files.list({
+        q: query,
+        pageSize: limit || 1000,
+        pageToken: continuationToken,
+        fields: 'nextPageToken, files(id, name, size, mimeType, modifiedTime)',
+      });
+
+      return {
+        files: (response.data.files || []).map((file) => ({
+          path: file.name || 'unknown',
+          size: parseInt(file.size || '0'),
+          lastModified: new Date(file.modifiedTime || Date.now()),
+          etag: file.id,
+        })),
+        continuationToken: response.data.nextPageToken || undefined,
+      };
+    } catch (error) {
+      this.handleStorageError(error, 'listFiles');
+    }
+  }
+
+  private async getFileIdByPath(path: string): Promise<string> {
+    const parts = path.split('/').filter(part => part.length > 0);
+    const fileName = parts.pop();
+    
+    let parentId = this.rootFolderId;
+    
+    for (const folderName of parts) {
+      parentId = await this.getFolderIdByName(folderName, parentId);
+    }
+    
+    const response = await this.drive.files.list({
+      q: `name='${fileName}' and '${parentId}' in parents and trashed=false`,
+      fields: 'files(id)',
     });
 
-    return files.map(file => ({
-      id: file.id,
-      name: file.name,
-      size: file.size,
-      shareId,
-      createdAt: file.createdAt,
-      mimeType: mime.contentType(file.name.split(".").pop()) || "application/octet-stream",
-    }));
-  }
-
-  supportsFeature(feature: StorageFeature): boolean {
-    switch (feature) {
-      case StorageFeature.CHUNKED_UPLOAD:
-        return true; // Simulated chunking
-      case StorageFeature.DIRECT_DOWNLOAD:
-        return true;
-      case StorageFeature.SPACE_QUOTA:
-        return true;
-      case StorageFeature.FILE_VERSIONING:
-        return false; // Could be implemented
-      case StorageFeature.BATCH_OPERATIONS:
-        return false;
-      case StorageFeature.STREAMING_UPLOAD:
-        return true;
-      default:
-        return false;
+    if (!response.data.files || response.data.files.length === 0) {
+      throw new Error(`File not found: ${path}`);
     }
+
+    return response.data.files[0].id!;
   }
 
-  protected async cleanupFailedUpload(shareId: string, fileId?: string): Promise<void> {
-    if (fileId) {
-      // Clear accumulated buffer
-      const chunkKey = `${shareId}:${fileId}`;
-      this.clearAccumulatedBuffer(chunkKey);
+  private async getFolderIdByPath(path: string): Promise<string> {
+    if (!path || path === '/' || path === '') {
+      return this.rootFolderId;
+    }
 
-      // Try to delete partial file from Google Drive (if exists)
+    const parts = path.split('/').filter(part => part.length > 0);
+    let parentId = this.rootFolderId;
+    
+    for (const folderName of parts) {
+      parentId = await this.getFolderIdByName(folderName, parentId);
+    }
+    
+    return parentId;
+  }
+
+  private async getFolderIdByName(folderName: string, parentId: string): Promise<string> {
+    const response = await this.drive.files.list({
+      q: `name='${folderName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id)',
+    });
+
+    if (!response.data.files || response.data.files.length === 0) {
+      throw new Error(`Folder not found: ${folderName}`);
+    }
+
+    return response.data.files[0].id!;
+  }
+
+  private async ensureFolderPath(path: string): Promise<string> {
+    if (!path || path === '/' || path === '') {
+      return this.rootFolderId;
+    }
+
+    const parts = path.split('/').filter(part => part.length > 0);
+    let parentId = this.rootFolderId;
+    
+    for (const folderName of parts) {
       try {
-        const fileMetadata = await this.prisma.file.findUnique({
-          where: { id: fileId },
-        });
-        
-        if (fileMetadata && this.drive) {
-          const shareFolderId = await this.getOrCreateShareFolder(shareId);
-          const searchResponse = await this.drive.files.list({
-            q: `name='${fileMetadata.name}' and parents in '${shareFolderId}'`,
-            fields: 'files(id)',
-          });
-
-          if (searchResponse.data.files && searchResponse.data.files.length > 0) {
-            await this.drive.files.delete({ fileId: searchResponse.data.files[0].id! });
-          }
-        }
+        parentId = await this.getFolderIdByName(folderName, parentId);
       } catch (error) {
-        this.logger.warn(`Failed to cleanup partial file:`, error);
+        parentId = await this.createFolder(folderName, parentId);
       }
     }
+    
+    return parentId;
   }
 
-  // Simple in-memory buffer management for chunked uploads
-  private bufferCache = new Map<string, Buffer>();
+  private async createFolder(folderName: string, parentId: string): Promise<string> {
+    const fileMetadata: drive_v3.Schema$File = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId],
+    };
 
-  private getAccumulatedBuffer(key: string): Buffer | undefined {
-    return this.bufferCache.get(key);
+    const response = await this.drive.files.create({
+      requestBody: fileMetadata,
+      fields: 'id',
+    });
+
+    return response.data.id!;
   }
 
-  private setAccumulatedBuffer(key: string, buffer: Buffer): void {
-    this.bufferCache.set(key, buffer);
-  }
-
-  private clearAccumulatedBuffer(key: string): void {
-    this.bufferCache.delete(key);
+  private async streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
+    });
   }
 }

@@ -1,268 +1,131 @@
+import { Logger } from '@nestjs/common';
 import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
-import { PrismaService } from "src/prisma/prisma.service";
-import { ConfigService } from "src/config/config.service";
-import * as crypto from "crypto";
-import { validate as isValidUUID } from "uuid";
-import {
-  CloudStorageService,
-  StorageProvider,
-  ChunkContext,
-  FileContext,
-  StorageFile,
+  CloudStorageProvider,
+  CloudStorageCapabilities,
+  UploadParams,
+  UploadResult,
+  DownloadOptions,
   FileMetadata,
-  StorageFeature,
-  MigrationResult,
-} from "./cloud-storage.interface";
-import { Readable } from "stream";
+  PresignedUrlOptions,
+  MultipartUploadInit,
+  MultipartUploadPart,
+  HealthCheckResult,
+} from './cloud-storage.interface';
 
-/**
- * Abstract base class for storage providers
- * Implements common functionality and validation logic
- */
-@Injectable()
-export abstract class BaseStorageService implements CloudStorageService {
+export abstract class BaseStorageService implements CloudStorageProvider {
   protected readonly logger = new Logger(this.constructor.name);
+  
+  abstract readonly name: string;
+  abstract readonly capabilities: CloudStorageCapabilities;
 
-  abstract readonly provider: StorageProvider;
+  abstract upload(params: UploadParams): Promise<UploadResult>;
+  
+  abstract download(
+    path: string,
+    options?: DownloadOptions,
+  ): Promise<NodeJS.ReadableStream>;
+  
+  abstract delete(path: string): Promise<void>;
+  
+  abstract getMetadata(path: string): Promise<FileMetadata>;
+  
+  abstract healthCheck(): Promise<HealthCheckResult>;
 
-  constructor(
-    protected prisma: PrismaService,
-    protected config: ConfigService,
-  ) {}
-
-  abstract initialize(config: Record<string, any>): Promise<void>;
-  abstract testConnection(): Promise<boolean>;
-  abstract get(shareId: string, fileId: string): Promise<StorageFile>;
-  abstract remove(shareId: string, fileId: string): Promise<void>;
-  abstract deleteAllFiles(shareId: string): Promise<void>;
-  abstract getZip(shareId: string): Promise<Readable>;
-  abstract getFileSize(shareId: string, fileName: string): Promise<number>;
-  abstract getAvailableSpace(): Promise<number | null>;
-  abstract listFiles(shareId: string): Promise<FileMetadata[]>;
-
-  /**
-   * Common file creation logic with validation
-   * Subclasses should override uploadChunk() method
-   */
-  async create(
-    data: string,
-    chunk: ChunkContext,
-    file: FileContext,
-    shareId: string,
-  ): Promise<FileContext> {
-    // Generate file ID if not provided
-    if (!file.id) {
-      file.id = crypto.randomUUID();
-    } else if (!isValidUUID(file.id)) {
-      throw new BadRequestException("Invalid file ID format");
-    }
-
-    // Validate share exists and is not locked
-    const share = await this.prisma.share.findUnique({
-      where: { id: shareId },
-      include: { files: true, reverseShare: true },
-    });
-
-    if (!share) {
-      throw new NotFoundException("Share not found");
-    }
-
-    if (share.uploadLocked) {
-      throw new BadRequestException("Share is already completed");
-    }
-
-    // Validate chunk data
-    const buffer = Buffer.from(data, "base64");
-    if (buffer.length === 0 && chunk.index !== chunk.total - 1) {
-      throw new BadRequestException("Empty chunk data received");
-    }
-
-    // Check share size limits
-    await this.validateShareSize(share, buffer.byteLength);
-
-    try {
-      // Provider-specific upload logic
-      await this.uploadChunk(data, chunk, file, shareId);
-
-      // If last chunk, create database record
-      if (chunk.index === chunk.total - 1) {
-        await this.finalizeFile(shareId, file);
-      }
-
-      return file;
-    } catch (error) {
-      this.logger.error(`Upload failed for file ${file.id}:`, error);
-      await this.cleanupFailedUpload(shareId, file.id);
-      throw new InternalServerErrorException("File upload failed");
-    }
+  getUrl?(
+    path: string,
+    options?: PresignedUrlOptions,
+  ): Promise<string> {
+    throw new Error(`Provider ${this.name} does not support presigned URLs`);
   }
 
-  /**
-   * Abstract method for provider-specific chunk upload
-   */
-  protected abstract uploadChunk(
-    data: string,
-    chunk: ChunkContext,
-    file: FileContext,
-    shareId: string,
-  ): Promise<void>;
+  multipartInit?(
+    path: string,
+    size?: number,
+    contentType?: string,
+    metadata?: Record<string, string>,
+  ): Promise<MultipartUploadInit> {
+    throw new Error(`Provider ${this.name} does not support multipart uploads`);
+  }
 
-  /**
-   * Finalize file upload by creating database record
-   */
-  protected async finalizeFile(shareId: string, file: FileContext): Promise<void> {
+  multipartUploadPart?(
+    uploadId: string,
+    partNumber: number,
+    data: Buffer | NodeJS.ReadableStream,
+    size?: number,
+  ): Promise<{ etag: string }> {
+    throw new Error(`Provider ${this.name} does not support multipart uploads`);
+  }
+
+  multipartComplete?(
+    uploadId: string,
+    path: string,
+    parts: MultipartUploadPart[],
+  ): Promise<UploadResult> {
+    throw new Error(`Provider ${this.name} does not support multipart uploads`);
+  }
+
+  multipartAbort?(uploadId: string, path: string): Promise<void> {
+    throw new Error(`Provider ${this.name} does not support multipart uploads`);
+  }
+
+  listFiles?(
+    prefix?: string,
+    limit?: number,
+    continuationToken?: string,
+  ): Promise<{
+    files: Array<{
+      path: string;
+      size: number;
+      lastModified: Date;
+      etag?: string;
+    }>;
+    continuationToken?: string;
+  }> {
+    throw new Error(`Provider ${this.name} does not support file listing`);
+  }
+
+  protected buildPath(relativePath: string): string {
+    return relativePath.replace(/^\/+/, '');
+  }
+
+  protected async measureLatency<T>(
+    operation: () => Promise<T>,
+  ): Promise<{ result: T; latencyMs: number }> {
+    const start = Date.now();
     try {
-      const fileSize = await this.getFileSize(shareId, file.name);
-      
-      await this.prisma.file.create({
-        data: {
-          id: file.id!,
-          name: file.name,
-          size: fileSize.toString(),
-          share: { connect: { id: shareId } },
-        },
-      });
+      const result = await operation();
+      const latencyMs = Date.now() - start;
+      return { result, latencyMs };
     } catch (error) {
-      this.logger.error(`Failed to finalize file ${file.id}:`, error);
+      const latencyMs = Date.now() - start;
+      this.logger.error(`Operation failed after ${latencyMs}ms: ${error.message}`);
       throw error;
     }
   }
 
-  /**
-   * Validate share size limits
-   */
-  protected async validateShareSize(share: any, additionalSize: number): Promise<void> {
-    const fileSizeSum = share.files.reduce(
-      (n: number, { size }: { size: string }) => n + parseInt(size),
-      0,
-    );
-
-    const totalSize = fileSizeSum + additionalSize;
-    const maxSize = this.config.get("share.maxSize");
-    const reverseMaxSize = share.reverseShare?.maxShareSize
-      ? parseInt(share.reverseShare.maxShareSize)
-      : null;
-
-    if (totalSize > maxSize || (reverseMaxSize && totalSize > reverseMaxSize)) {
-      throw new BadRequestException("Max share size exceeded");
+  protected handleStorageError(error: any, operation: string): never {
+    this.logger.error(`${this.name} ${operation} failed:`, error);
+    
+    if (error.code === 'ENOENT' || error.status === 404) {
+      throw new Error(`File not found in ${this.name}`);
     }
-  }
-
-  /**
-   * Clean up failed upload (provider should implement if needed)
-   */
-  protected async cleanupFailedUpload(shareId: string, fileId?: string): Promise<void> {
-    // Default implementation - providers can override
-    this.logger.warn(`Cleanup needed for failed upload: ${shareId}/${fileId}`);
-  }
-
-  /**
-   * Default feature support (providers should override)
-   */
-  supportsFeature(feature: StorageFeature): boolean {
-    switch (feature) {
-      case StorageFeature.CHUNKED_UPLOAD:
-        return true;
-      case StorageFeature.DIRECT_DOWNLOAD:
-        return false;
-      case StorageFeature.SPACE_QUOTA:
-        return false;
-      case StorageFeature.FILE_VERSIONING:
-        return false;
-      case StorageFeature.BATCH_OPERATIONS:
-        return false;
-      case StorageFeature.STREAMING_UPLOAD:
-        return false;
-      default:
-        return false;
+    
+    if (error.code === 'ENOSPC' || error.status === 507) {
+      throw new Error(`Insufficient storage space in ${this.name}`);
     }
-  }
-
-  /**
-   * Default migration implementation
-   */
-  async migrateFiles(
-    sourceProvider: CloudStorageService,
-    shareId: string,
-    fileIds: string[]
-  ): Promise<MigrationResult> {
-    const result: MigrationResult = {
-      success: true,
-      migratedFiles: [],
-      failedFiles: [],
-      totalSize: 0,
-    };
-
-    for (const fileId of fileIds) {
-      try {
-        // Get file from source provider
-        const sourceFile = await sourceProvider.get(shareId, fileId);
-        
-        // Convert stream to buffer for re-upload
-        const chunks = await this.streamToChunks(sourceFile.file);
-        
-        // Upload to current provider
-        const fileContext: FileContext = {
-          id: fileId,
-          name: sourceFile.metaData.name,
-        };
-
-        for (let i = 0; i < chunks.length; i++) {
-          await this.uploadChunk(
-            chunks[i].toString('base64'),
-            { index: i, total: chunks.length },
-            fileContext,
-            shareId
-          );
-        }
-
-        result.migratedFiles.push(fileId);
-        result.totalSize += parseInt(sourceFile.metaData.size);
-      } catch (error) {
-        this.logger.error(`Migration failed for file ${fileId}:`, error);
-        result.failedFiles.push({
-          fileId,
-          error: error.message || 'Unknown error'
-        });
-        result.success = false;
-      }
+    
+    if (error.code === 'ETIMEDOUT' || error.status === 408) {
+      throw new Error(`Operation timeout in ${this.name}`);
     }
-
-    return result;
-  }
-
-  /**
-   * Helper method to convert stream to chunks
-   */
-  protected async streamToChunks(stream: Readable): Promise<Buffer[]> {
-    const chunkSize = this.config.get("share.chunkSize");
-    const chunks: Buffer[] = [];
-    let buffer = Buffer.alloc(0);
-
-    return new Promise((resolve, reject) => {
-      stream.on('data', (data) => {
-        buffer = Buffer.concat([buffer, data]);
-        
-        while (buffer.length >= chunkSize) {
-          chunks.push(buffer.slice(0, chunkSize));
-          buffer = buffer.slice(chunkSize);
-        }
-      });
-
-      stream.on('end', () => {
-        if (buffer.length > 0) {
-          chunks.push(buffer);
-        }
-        resolve(chunks);
-      });
-
-      stream.on('error', reject);
-    });
+    
+    if (error.status === 401 || error.status === 403) {
+      throw new Error(`Authentication failed for ${this.name}`);
+    }
+    
+    if (error.status >= 500) {
+      throw new Error(`${this.name} server error: ${error.message}`);
+    }
+    
+    throw new Error(`${this.name} error: ${error.message || 'Unknown error'}`);
   }
 }
