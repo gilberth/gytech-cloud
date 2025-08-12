@@ -1,3 +1,65 @@
+## [1.15.2-gytech] (2025-08-12)
+
+### Development Environment Fixes
+* **Frontend Dependencies:** Resolved missing dependencies causing build failures
+  - Added `next-http-proxy-middleware ^1.2.6` to fix proxy middleware import errors
+  - Added `yup ^1.7.0` to resolve form validation dependencies
+  - Fixed react-icons import error: `TbAuth2Fa` → `Tb2Fa` in account page TOTP component
+  - Replaced `markdown-to-jsx` with `react-markdown` for file preview functionality
+
+* **Translation System:** Fixed missing Spanish translations preventing frontend compilation
+  - Added missing es-ES translations for storage provider categories
+  - `"admin.config.category.azure": "Azure"`
+  - `"admin.config.category.azureblob": "Azure Blob"`
+  - `"admin.config.storage.title": "Gestión de Almacenamiento"`
+
+* **React Performance:** Fixed infinite render loop in homepage component
+  - Split useEffect hooks to prevent config dependency loops
+  - Removed config dependency from user authentication check
+  - Resolved 1000+ API requests per minute issue
+
+### Developer Guidelines Added
+* **Icon Import Prevention:** Always verify react-icons exports before use
+  - Use `node -e "console.log(Object.keys(require('react-icons/tb')))"` to check available icons
+  - Common naming patterns: `Tb2Fa` not `TbAuth2Fa`, `TbUser` not `TbUserIcon`
+* **Translation Completeness:** Ensure all translation keys exist in all language files
+  - Missing translation keys cause compilation failures in production builds
+* **useEffect Dependencies:** Avoid object dependencies that recreate on each render
+  - Use empty dependency arrays `[]` for mount-only effects
+  - Split complex effects into separate hooks
+
+## [1.15.1-gytech] (2025-08-10)
+
+### Bug Fixes
+* **Frontend Configuration System:** Fixed critical configuration loading errors preventing app startup
+  - Enhanced config service error handling to prevent crashes when config variables are missing
+  - Added fallback configuration in middleware with essential config keys including `general.showHomePage`
+  - Improved error boundaries with graceful fallbacks for missing config variables
+  - Added try-catch blocks around config retrieval in Header component to prevent navigation failures
+  - Fixed "missing required error components, refreshing" loop by implementing proper error recovery
+  - Ensured all critical config variables are available in fallback scenarios
+
+## [1.15.0-gytech] (2025-08-09)
+
+### Frontend Interface
+* **Storage Management UI:** Added comprehensive web interface for multi-storage administration
+  - Admin panel integration with dedicated Storage section accessible via `/admin/storage`
+  - Real-time provider health monitoring with visual status indicators
+  - Interactive provider configuration and testing capabilities
+  - Storage metrics dashboard with file counts, sizes, and sync statistics
+  - Queue management interface for monitoring sync operations
+  - Disaster Recovery interface with automated recovery execution
+  - Emergency recovery functionality with one-click file restoration from remote providers
+
+### Docker Production Deployment
+* **Production-Ready Configuration:** Complete Docker containerization with multi-storage support
+  - `docker-compose.dev.yml` configuration with Redis queue integration
+  - Environment variable configuration for all storage providers
+  - Circuit breaker settings and DR policy configuration via environment variables
+  - Health checks and service dependency management
+  - Volume persistence for data and backup storage
+  - Auto-refresh monitoring and production-grade logging
+
 ## [1.15.0-gytech] (2025-08-09)
 
 ### Major Features - Multi-Storage Architecture Implementation

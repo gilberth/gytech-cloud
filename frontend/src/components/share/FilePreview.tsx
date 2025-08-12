@@ -13,7 +13,7 @@ import {
   Divider,
 } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import Markdown, { MarkdownToJSX } from "markdown-to-jsx";
+import ReactMarkdown from "react-markdown";
 import Link from "next/link";
 import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
@@ -291,33 +291,35 @@ const TextPreview = () => {
   const isMarkdown = fileName?.toLowerCase().endsWith('.md') || fileName?.toLowerCase().endsWith('.markdown');
 
   if (isMarkdown) {
-    const options: MarkdownToJSX.Options = {
-      disableParsingRawHTML: true,
-      overrides: {
-        pre: {
-          props: {
-            style: {
-              backgroundColor:
-                colorScheme == "dark"
-                  ? "rgba(50, 50, 50, 0.5)"
-                  : "rgba(220, 220, 220, 0.5)",
-              padding: "0.75em",
-              whiteSpace: "pre-wrap",
-              borderRadius: "4px",
-            },
-          },
-        },
-        table: {
-          props: {
-            className: "md",
-          },
-        },
-      },
+    const customComponents = {
+      pre: ({ children, ...props }: any) => (
+        <pre
+          {...props}
+          style={{
+            backgroundColor:
+              colorScheme == "dark"
+                ? "rgba(50, 50, 50, 0.5)"
+                : "rgba(220, 220, 220, 0.5)",
+            padding: "0.75em",
+            whiteSpace: "pre-wrap",
+            borderRadius: "4px",
+          }}
+        >
+          {children}
+        </pre>
+      ),
+      table: ({ children, ...props }: any) => (
+        <table {...props} className="md">
+          {children}
+        </table>
+      ),
     };
 
     return (
       <Box style={{ maxHeight: "500px", overflow: "auto", padding: "1rem" }}>
-        <Markdown options={options}>{text}</Markdown>
+        <ReactMarkdown components={customComponents} disallowedElements={['script']}>
+          {text}
+        </ReactMarkdown>
       </Box>
     );
   }

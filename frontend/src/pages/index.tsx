@@ -84,7 +84,9 @@ export default function Home() {
         router.replace("/upload");
       }
     });
+  }, []); // Solo ejecutar una vez al montar el componente
 
+  useEffect(() => {
     // If registration is disabled, get started button should redirect to the sign in page
     try {
       const allowRegistration = config.get("share.allowRegistration");
@@ -92,7 +94,7 @@ export default function Home() {
     } catch (error) {
       setSignupEnabled(true);
     }
-  }, [config]);
+  }, []);
 
   const getButtonHref = () => {
     return signupEnabled ? "/auth/signUp" : "/auth/signIn";
