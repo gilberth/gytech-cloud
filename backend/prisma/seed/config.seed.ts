@@ -377,11 +377,31 @@ export const configVariables = {
       type: "boolean",
       defaultValue: "true",
     },
+    fallback: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+    priority: {
+      type: "number",
+      defaultValue: "1",
+      secret: false,
+    },
   },
   storage: {
     defaultProvider: {
       type: "string",
       defaultValue: "LOCAL",
+      secret: false,
+    },
+    healthCheckIntervalMs: {
+      type: "number",
+      defaultValue: "30000",
+      secret: false,
+    },
+    maxConsecutiveFailures: {
+      type: "number",
+      defaultValue: "3",
       secret: false,
     },
   },
@@ -411,6 +431,31 @@ export const configVariables = {
       defaultValue: "",
       secret: false,
     },
+    refreshToken: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+    accessToken: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
+    rootPath: {
+      type: "string",
+      defaultValue: "/",
+      secret: false,
+    },
+    fallback: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+    priority: {
+      type: "number",
+      defaultValue: "2",
+      secret: false,
+    },
   },
   googledrive: {
     enabled: {
@@ -433,9 +478,24 @@ export const configVariables = {
       defaultValue: "",
       obscured: true,
     },
+    accessToken: {
+      type: "string",
+      defaultValue: "",
+      obscured: true,
+    },
     parentFolderId: {
       type: "string",
       defaultValue: "",
+      secret: false,
+    },
+    fallback: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+    priority: {
+      type: "number",
+      defaultValue: "3",
       secret: false,
     },
   },
@@ -463,6 +523,21 @@ export const configVariables = {
     containerName: {
       type: "string",
       defaultValue: "",
+      secret: false,
+    },
+    endpoint: {
+      type: "string",
+      defaultValue: "",
+      secret: false,
+    },
+    fallback: {
+      type: "boolean",
+      defaultValue: "false",
+      secret: false,
+    },
+    priority: {
+      type: "number",
+      defaultValue: "4",
       secret: false,
     },
   },

@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '../../config/config.service';
 import { CloudStorageProvider, HealthCheckResult } from './cloud-storage.interface';
 import { OneDriveStorageService } from './onedrive-storage.service';
 import { GoogleDriveStorageService } from './googledrive-storage.service';
@@ -33,16 +33,18 @@ export interface ProviderHealth {
 }
 
 @Injectable()
-export class StorageFactoryService {
+export class StorageFactoryService implements OnModuleDestroy {
   private readonly logger = new Logger(StorageFactoryService.name);
   private readonly providers = new Map<StorageProviderType, CloudStorageProvider>();
   private readonly providerHealth = new Map<StorageProviderType, ProviderHealth>();
   private readonly enabledProviders = new Set<StorageProviderType>();
   private primaryProvider: StorageProviderType = StorageProviderType.LOCAL;
   private fallbackProviders: StorageProviderType[] = [];
+  private healthCheckInterval: NodeJS.Timeout;
 
   constructor(private configService: ConfigService) {
     this.initializeProviders();
+    this.startPeriodicHealthChecks();
   }
 
   private initializeProviders() {
@@ -97,6 +99,8 @@ export class StorageFactoryService {
   }
 
   private getProviderConfigurations(): StorageProviderConfig[] {
+    const onedriveEnabled = this.configService.get('onedrive.enabled');
+    
     return [
       {
         type: StorageProviderType.LOCAL,
@@ -106,31 +110,31 @@ export class StorageFactoryService {
       },
       {
         type: StorageProviderType.S3,
-        enabled: this.configService.get<boolean>('S3_ENABLED', false),
-        primary: this.configService.get<string>('PRIMARY_STORAGE') === 'S3',
-        fallback: this.configService.get<boolean>('S3_FALLBACK', false),
-        priority: this.configService.get<number>('S3_PRIORITY', 1),
+        enabled: this.configService.get('s3.enabled') === 'true',
+        primary: this.configService.get('storage.defaultProvider') === 'S3',
+        fallback: this.configService.get('s3.fallback') === 'true',
+        priority: parseInt(this.configService.get('s3.priority')) || 1,
       },
       {
         type: StorageProviderType.ONEDRIVE,
-        enabled: this.configService.get<boolean>('ONEDRIVE_ENABLED', false),
-        primary: this.configService.get<string>('PRIMARY_STORAGE') === 'ONEDRIVE',
-        fallback: this.configService.get<boolean>('ONEDRIVE_FALLBACK', false),
-        priority: this.configService.get<number>('ONEDRIVE_PRIORITY', 2),
+        enabled: onedriveEnabled === 'true' || onedriveEnabled === true,
+        primary: this.configService.get('storage.defaultProvider') === 'ONEDRIVE',
+        fallback: this.configService.get('onedrive.fallback') === 'true',
+        priority: parseInt(this.configService.get('onedrive.priority')) || 2,
       },
       {
         type: StorageProviderType.GOOGLE_DRIVE,
-        enabled: this.configService.get<boolean>('GOOGLE_DRIVE_ENABLED', false),
-        primary: this.configService.get<string>('PRIMARY_STORAGE') === 'GOOGLE_DRIVE',
-        fallback: this.configService.get<boolean>('GOOGLE_DRIVE_FALLBACK', false),
-        priority: this.configService.get<number>('GOOGLE_DRIVE_PRIORITY', 3),
+        enabled: this.configService.get('googledrive.enabled') === 'true',
+        primary: this.configService.get('storage.defaultProvider') === 'GOOGLE_DRIVE',
+        fallback: this.configService.get('googledrive.fallback') === 'true',
+        priority: parseInt(this.configService.get('googledrive.priority')) || 3,
       },
       {
         type: StorageProviderType.AZURE_BLOB,
-        enabled: this.configService.get<boolean>('AZURE_BLOB_ENABLED', false),
-        primary: this.configService.get<string>('PRIMARY_STORAGE') === 'AZURE_BLOB',
-        fallback: this.configService.get<boolean>('AZURE_BLOB_FALLBACK', false),
-        priority: this.configService.get<number>('AZURE_BLOB_PRIORITY', 4),
+        enabled: this.configService.get('azureblob.enabled') === 'true',
+        primary: this.configService.get('storage.defaultProvider') === 'AZURE_BLOB',
+        fallback: this.configService.get('azureblob.fallback') === 'true',
+        priority: parseInt(this.configService.get('azureblob.priority')) || 4,
       },
     ];
   }
@@ -265,8 +269,15 @@ export class StorageFactoryService {
     const health = this.providerHealth.get(type);
     if (!health) return false;
 
-    const maxFailures = this.configService.get<number>('STORAGE_MAX_CONSECUTIVE_FAILURES', 3);
-    const healthCheckInterval = this.configService.get<number>('STORAGE_HEALTH_CHECK_INTERVAL_MS', 300000); // 5 minutes
+    let maxFailures = 3;
+    let healthCheckInterval = 300000; // 5 minutes
+    
+    try {
+      maxFailures = parseInt(this.configService.get('storage.maxConsecutiveFailures')) || 3;
+      healthCheckInterval = parseInt(this.configService.get('storage.healthCheckIntervalMs')) || 300000;
+    } catch (error) {
+      // Use defaults if config not found
+    }
     
     if (health.consecutiveFailures >= maxFailures) {
       return false;
@@ -324,5 +335,32 @@ export class StorageFactoryService {
     
     this.logger.log(`Switched primary provider from ${oldPrimary} to ${newPrimary}`);
     return true;
+  }
+
+  private startPeriodicHealthChecks() {
+    // Health check every 30 seconds
+    let intervalMs = 30000;
+    try {
+      intervalMs = parseInt(this.configService.get('storage.healthCheckIntervalMs')) || 30000;
+    } catch (error) {
+      this.logger.warn('healthCheckIntervalMs config not found, using default 30000ms');
+    }
+    
+    this.healthCheckInterval = setInterval(async () => {
+      try {
+        await this.healthCheckAll();
+      } catch (error) {
+        this.logger.error('Periodic health check failed:', error);
+      }
+    }, intervalMs);
+
+    this.logger.log(`Started periodic health checks every ${intervalMs}ms`);
+  }
+
+  onModuleDestroy() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.logger.log('Stopped periodic health checks');
+    }
   }
 }
