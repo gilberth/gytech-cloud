@@ -8,9 +8,10 @@ import { OAuthProvider } from "./provider/oauthProvider.interface";
 import { OidcProvider } from "./provider/oidc.provider";
 import { DiscordProvider } from "./provider/discord.provider";
 import { MicrosoftProvider } from "./provider/microsoft.provider";
+import { MicrosoftOAuthController } from "./microsoft-oauth.controller";
 
 @Module({
-  controllers: [OAuthController],
+  controllers: [OAuthController, MicrosoftOAuthController],
   providers: [
     OAuthService,
     GitHubProvider,

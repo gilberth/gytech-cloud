@@ -1,17 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule } from '../../config/config.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 
+import { StorageAPIController } from './storage-api.controller';
+import { StorageDemoController } from './storage-demo.controller';
 import { StorageFactoryService } from './storage-factory.service';
-import { StorageOrchestratorService } from './storage-orchestrator.service';
-import { SyncQueueService } from './sync-queue.service';
-import { DrService } from './dr-service';
-import { RecoveryService } from './recovery.service';
-import { StorageApiController } from './storage-api.controller';
-
-import { OneDriveStorageService } from './onedrive-storage.service';
-import { GoogleDriveStorageService } from './googledrive-storage.service';
-import { AzureBlobCloudStorageService } from './azureblob-cloud-storage.service';
+// import { SyncQueueService } from './sync-queue.service'; // Temporarily disabled
+// import { StorageOrchestratorService } from './storage-orchestrator.service'; // Temporarily disabled
 
 @Module({
   imports: [
@@ -20,23 +15,17 @@ import { AzureBlobCloudStorageService } from './azureblob-cloud-storage.service'
   ],
   providers: [
     StorageFactoryService,
-    StorageOrchestratorService,
-    SyncQueueService,
-    DrService,
-    RecoveryService,
-    OneDriveStorageService,
-    GoogleDriveStorageService,
-    AzureBlobCloudStorageService,
+    // SyncQueueService, // Temporarily disabled due to config service issues
+    // StorageOrchestratorService, // Temporarily disabled due to circular dependency
   ],
   controllers: [
-    StorageApiController,
+    StorageAPIController,
+    StorageDemoController,
   ],
   exports: [
     StorageFactoryService,
-    StorageOrchestratorService,
-    SyncQueueService,
-    DrService,
-    RecoveryService,
+    // SyncQueueService, // Temporarily disabled due to config service issues
+    // StorageOrchestratorService, // Temporarily disabled due to circular dependency
   ],
 })
 export class MultiStorageModule {}

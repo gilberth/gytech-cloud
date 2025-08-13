@@ -48,7 +48,7 @@ export class StorageAPIController {
         const onedriveClientSecret = await this.configService.get('onedrive.clientSecret');
         
         if (onedriveClientId && onedriveClientSecret) {
-          const onedriveStorageData = await this.getProviderStorageData('OneDrive');
+          const onedriveStorageData = await this.getProviderStorageData('ONEDRIVE');
           const onedriveProvider = {
             name: 'OneDrive',
             type: 'cloud',
@@ -76,7 +76,7 @@ export class StorageAPIController {
         const googledriveClientSecret = await this.configService.get('googledrive.clientSecret');
         
         if (googledriveClientId && googledriveClientSecret) {
-          const googledriveStorageData = await this.getProviderStorageData('GoogleDrive');
+          const googledriveStorageData = await this.getProviderStorageData('GOOGLE_DRIVE');
           const googledriveProvider = {
             name: 'GoogleDrive',
             type: 'cloud',
@@ -104,7 +104,7 @@ export class StorageAPIController {
         const azureblobAccountKey = await this.configService.get('azureblob.accountKey');
         
         if (azureblobAccountName && azureblobAccountKey) {
-          const azureblobStorageData = await this.getProviderStorageData('AzureBlob');
+          const azureblobStorageData = await this.getProviderStorageData('AZURE_BLOB');
           const azureblobProvider = {
             name: 'AzureBlob',
             type: 'cloud',
@@ -207,17 +207,47 @@ export class StorageAPIController {
         return sum + fileSize;
       }, 0);
 
-      // For now, since StorageFactory doesn't have real providers yet, use LOCAL only
+      // Get metrics for all enabled providers
       const byProvider = {
         'LOCAL': await this.getProviderMetrics('LOCAL')
       };
 
+      // Add metrics for enabled cloud providers
+      const onedriveEnabled = await this.configService.get('onedrive.enabled');
+      if (onedriveEnabled === 'true' || onedriveEnabled === true) {
+        const onedriveClientId = await this.configService.get('onedrive.clientId');
+        const onedriveClientSecret = await this.configService.get('onedrive.clientSecret');
+        if (onedriveClientId && onedriveClientSecret) {
+          byProvider['OneDrive'] = await this.getProviderMetrics('ONEDRIVE');
+        }
+      }
+
+      const googledriveEnabled = await this.configService.get('googledrive.enabled');
+      if (googledriveEnabled === 'true') {
+        const googledriveClientId = await this.configService.get('googledrive.clientId');
+        const googledriveClientSecret = await this.configService.get('googledrive.clientSecret');
+        if (googledriveClientId && googledriveClientSecret) {
+          byProvider['GoogleDrive'] = await this.getProviderMetrics('GOOGLE_DRIVE');
+        }
+      }
+
+      const azureblobEnabled = await this.configService.get('azureblob.enabled');
+      if (azureblobEnabled === 'true') {
+        const azureblobAccountName = await this.configService.get('azureblob.accountName');
+        const azureblobAccountKey = await this.configService.get('azureblob.accountKey');
+        if (azureblobAccountName && azureblobAccountKey) {
+          byProvider['AzureBlob'] = await this.getProviderMetrics('AZURE_BLOB');
+        }
+      }
+
+      const activeProviderCount = Object.keys(byProvider).length;
+
       return {
         totalFiles,
         totalSize,
-        totalProviders: 1, // Only LOCAL for now
-        activeProviders: 1, // Only LOCAL for now
-        syncStatus: 'Healthy', // Since only LOCAL is active
+        totalProviders: activeProviderCount,
+        activeProviders: activeProviderCount,
+        syncStatus: 'Healthy',
         lastSync: new Date().toISOString(),
         byProvider,
       };

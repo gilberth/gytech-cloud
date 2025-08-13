@@ -119,7 +119,7 @@ export class StorageFactoryService implements OnModuleDestroy {
         type: StorageProviderType.ONEDRIVE,
         enabled: onedriveEnabled === 'true' || onedriveEnabled === true,
         primary: this.configService.get('storage.defaultProvider') === 'ONEDRIVE',
-        fallback: this.configService.get('onedrive.fallback') === 'true',
+        fallback: this.configService.get('onedrive.fallback') === 'true' || this.configService.get('onedrive.fallback') === true,
         priority: parseInt(this.configService.get('onedrive.priority')) || 2,
       },
       {
