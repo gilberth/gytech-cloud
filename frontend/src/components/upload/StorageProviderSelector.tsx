@@ -213,7 +213,7 @@ const StorageProviderSelector: React.FC<StorageProviderSelectorProps> = ({
         }
       />
       
-      {showInfo && selectedProvider && !selectedProvider.capabilities?.connected && (
+      {showInfo && selectedProvider && selectedProvider.capabilities && !selectedProvider.capabilities.connected && (
         <Alert color="yellow" mt="xs">
           <Text size="xs">
             Warning: Selected storage provider is not connected. Files may not be uploaded successfully.
@@ -222,6 +222,7 @@ const StorageProviderSelector: React.FC<StorageProviderSelectorProps> = ({
       )}
       
       {showInfo && selectedProvider?.capabilities?.availableSpace !== null && 
+       selectedProvider?.capabilities?.availableSpace !== undefined &&
        selectedProvider.capabilities.availableSpace < 100 * 1024 * 1024 && ( // Less than 100MB
         <Alert color="orange" mt="xs">
           <Text size="xs">
