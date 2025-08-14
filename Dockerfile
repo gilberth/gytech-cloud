@@ -42,7 +42,7 @@ RUN deluser --remove-home node
 
 RUN apk update --no-cache \
     && apk upgrade --no-cache \
-    && apk add --no-cache curl caddy su-exec openssl
+    && apk add --no-cache curl caddy su-exec openssl sqlite
 
 WORKDIR /opt/app/frontend
 COPY --from=frontend-builder /opt/app/public ./public

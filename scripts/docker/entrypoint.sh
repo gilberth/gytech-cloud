@@ -3,11 +3,35 @@
 # Copy default logo to the frontend public folder if it doesn't exist
 cp -rn /tmp/img/* /opt/app/frontend/public/img
 
-# Start the backend server first
+# Initialize database if needed
+echo "Checking database initialization..."
+cd /opt/app/backend
+
+# Check if database exists and has tables
+if ! sqlite3 ../data/pingvin-share.db ".tables" 2>/dev/null | grep -q "Config"; then
+  echo "Database not initialized. Setting up database..."
+  
+  # Create database directory if it doesn't exist
+  mkdir -p ../data
+  
+  # Initialize database schema
+  echo "Running database migrations..."
+  npx prisma db push --accept-data-loss
+  
+  # Seed initial configuration
+  echo "Seeding initial configuration..."
+  npx tsx prisma/seed/config.seed.ts || echo "Seed completed"
+  
+  echo "Database initialization completed!"
+else
+  echo "Database already initialized."
+fi
+
+# Start the backend server
 echo "Starting backend server..."
-cd backend && npm run start:prod &
+npm run start:prod &
 BACKEND_PID=$!
-cd ..
+cd /opt/app
 
 # Wait for backend to be ready
 echo "Waiting for backend to be ready..."
