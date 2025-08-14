@@ -253,7 +253,7 @@ const MigrationManager = () => {
               <Select
                 placeholder="Filter by provider"
                 value={filterProvider}
-                onChange={setFilterProvider}
+                onChange={(value) => setFilterProvider(value || 'all')}
                 data={[
                   { value: "all", label: "All Providers" },
                   ...Array.from(new Set(shares.map(s => s.storageProvider))).map(p => ({
@@ -396,7 +396,7 @@ const MigrationManager = () => {
             label="Target Storage Provider"
             placeholder="Select target provider"
             value={targetProvider}
-            onChange={setTargetProvider}
+            onChange={(value) => setTargetProvider(value || '')}
             data={providers
               .filter(p => p.capabilities?.connected)
               .map(p => ({

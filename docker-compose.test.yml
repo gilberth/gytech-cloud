@@ -1,0 +1,24 @@
+services:
+  gytech-test:
+    image: ghcr.io/gilberth/gytech-cloud:latest
+    container_name: gytech-test
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - TRUST_PROXY=false
+    volumes:
+      - gytech-test-data:/opt/app/backend/data
+      - gytech-test-images:/opt/app/frontend/public/img
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  gytech-test-data:
+    driver: local
+  gytech-test-images:
+    driver: local

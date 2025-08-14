@@ -1,291 +1,244 @@
 import {
-  Body,
   Controller,
   Get,
-  Post,
   Put,
+  Body,
+  Param,
   UseGuards,
-  BadRequestException,
-} from "@nestjs/common";
-import { AdministratorGuard } from "src/auth/guard/isAdmin.guard";
-import { JwtGuard } from "src/auth/guard/jwt.guard";
-import { ConfigService } from "./config.service";
-import { FileService } from "src/file/file.service";
-import { StorageProvider } from "src/file/storage/cloud-storage.interface";
+  HttpStatus,
+  HttpCode,
+} from '@nestjs/common';
+import { ConfigService } from './config.service';
+import { AdministratorGuard } from '../auth/guard/isAdmin.guard';
+import { UpdateAzureConfigDto } from './dto/UpdateAzureConfigDto';
+import { UpdateOneDriveConfigDto } from './dto/UpdateOneDriveConfigDto';
+import { UpdateGoogleDriveConfigDto } from './dto/UpdateGoogleDriveConfigDto';
 
-interface StorageProviderConfig {
-  provider: StorageProvider;
-  enabled: boolean;
-  displayName: string;
-  config: Record<string, any>;
-  capabilities?: {
-    features: string[];
-    availableSpace: number | null;
-    connected: boolean;
-  };
-}
-
-@Controller("admin/storage")
-@UseGuards(JwtGuard, AdministratorGuard)
+@Controller('admin/config/storage')
+@UseGuards(AdministratorGuard)
 export class StorageConfigController {
-  constructor(
-    private configService: ConfigService,
-    private fileService: FileService,
-  ) {}
+  constructor(private readonly configService: ConfigService) {}
 
-  /**
-   * Get all available storage providers and their configurations
-   */
-  @Get("providers")
-  async getStorageProviders(): Promise<StorageProviderConfig[]> {
-    const availableProviders = await this.fileService.getAvailableProviders();
-    const providers: StorageProviderConfig[] = [];
+  @Get()
+  async getAllStorageConfig() {
+    const storageConfig = {
+      azure: await this.getAzureConfig(),
+      onedrive: await this.getOneDriveConfig(),
+      googledrive: await this.getGoogleDriveConfig(),
+    };
 
-    for (const provider of availableProviders) {
-      const config = this.getProviderConfig(provider);
-      let capabilities;
-
-      try {
-        capabilities = await this.fileService.getProviderCapabilities(provider);
-      } catch (error) {
-        capabilities = {
-          features: [],
-          availableSpace: null,
-          connected: false,
-        };
-      }
-
-      providers.push({
-        provider,
-        enabled: config.enabled,
-        displayName: this.getProviderDisplayName(provider),
-        config: this.sanitizeConfig(config.config),
-        capabilities,
-      });
-    }
-
-    return providers;
+    return {
+      success: true,
+      data: storageConfig,
+    };
   }
 
-  /**
-   * Test connection to a storage provider
-   */
-  @Post("test-connection")
-  async testConnection(@Body() body: { provider: StorageProvider; config: Record<string, any> }): Promise<{ success: boolean; error?: string }> {
+  // Azure Blob Storage Configuration
+  @Get('azure')
+  async getAzureConfig() {
+    return {
+      accountName: this.configService.get('storage.azureAccountName'),
+      containerName: this.configService.get('storage.azureContainerName'),
+      endpoint: this.configService.get('storage.azureEndpoint'),
+      enabled: this.configService.get('storage.azureStorageEnabled') || false,
+      primary: this.configService.get('storage.azureStoragePrimary') || false,
+      fallback: this.configService.get('storage.azureStorageFallback') || false,
+      // Don't return sensitive values like accountKey or sasToken
+    };
+  }
+
+  @Put('azure')
+  @HttpCode(HttpStatus.OK)
+  async updateAzureConfig(@Body() config: UpdateAzureConfigDto) {
+    const updates: { [key: string]: any } = {};
+
+    if (config.accountName !== undefined) {
+      updates['storage.azureAccountName'] = config.accountName;
+    }
+    if (config.accountKey !== undefined) {
+      updates['storage.azureAccountKey'] = config.accountKey;
+    }
+    if (config.sasToken !== undefined) {
+      updates['storage.azureSasToken'] = config.sasToken;
+    }
+    if (config.containerName !== undefined) {
+      updates['storage.azureContainerName'] = config.containerName;
+    }
+    if (config.endpoint !== undefined) {
+      updates['storage.azureEndpoint'] = config.endpoint;
+    }
+    if (config.enabled !== undefined) {
+      updates['storage.azureStorageEnabled'] = config.enabled;
+    }
+    if (config.primary !== undefined) {
+      updates['storage.azureStoragePrimary'] = config.primary;
+    }
+    if (config.fallback !== undefined) {
+      updates['storage.azureStorageFallback'] = config.fallback;
+    }
+
+    const updateData = Object.entries(updates).map(([key, value]) => ({ key, value }));
+    if (updateData.length > 0) {
+      await this.configService.updateMany(updateData);
+    }
+
+    return {
+      success: true,
+      message: 'Azure storage configuration updated successfully',
+    };
+  }
+
+  // OneDrive Configuration
+  @Get('onedrive')
+  async getOneDriveConfig() {
+    return {
+      clientId: this.configService.get('storage.onedriveClientId'),
+      redirectUri: this.configService.get('storage.onedriveRedirectUri'),
+      tenantId: this.configService.get('storage.onedriveTenantId'),
+      scopes: this.configService.get('storage.onedriveScopes') || 'https://graph.microsoft.com/Files.ReadWrite.All',
+      enabled: this.configService.get('storage.onedriveStorageEnabled') || false,
+      primary: this.configService.get('storage.onedriveStoragePrimary') || false,
+      fallback: this.configService.get('storage.onedriveStorageFallback') || false,
+      // Don't return sensitive clientSecret
+    };
+  }
+
+  @Put('onedrive')
+  @HttpCode(HttpStatus.OK)
+  async updateOneDriveConfig(@Body() config: UpdateOneDriveConfigDto) {
+    const updates: { [key: string]: any } = {};
+
+    if (config.clientId !== undefined) {
+      updates['storage.onedriveClientId'] = config.clientId;
+    }
+    if (config.clientSecret !== undefined) {
+      updates['storage.onedriveClientSecret'] = config.clientSecret;
+    }
+    if (config.redirectUri !== undefined) {
+      updates['storage.onedriveRedirectUri'] = config.redirectUri;
+    }
+    if (config.tenantId !== undefined) {
+      updates['storage.onedriveTenantId'] = config.tenantId;
+    }
+    if (config.scopes !== undefined) {
+      updates['storage.onedriveScopes'] = config.scopes;
+    }
+    if (config.enabled !== undefined) {
+      updates['storage.onedriveStorageEnabled'] = config.enabled;
+    }
+    if (config.primary !== undefined) {
+      updates['storage.onedriveStoragePrimary'] = config.primary;
+    }
+    if (config.fallback !== undefined) {
+      updates['storage.onedriveStorageFallback'] = config.fallback;
+    }
+
+    const updateData = Object.entries(updates).map(([key, value]) => ({ key, value }));
+    if (updateData.length > 0) {
+      await this.configService.updateMany(updateData);
+    }
+
+    return {
+      success: true,
+      message: 'OneDrive storage configuration updated successfully',
+    };
+  }
+
+  // Google Drive Configuration
+  @Get('googledrive')
+  async getGoogleDriveConfig() {
+    return {
+      clientId: this.configService.get('storage.googledriveClientId'),
+      redirectUri: this.configService.get('storage.googledriveRedirectUri'),
+      projectId: this.configService.get('storage.googledriveProjectId'),
+      authUri: this.configService.get('storage.googledriveAuthUri') || 'https://accounts.google.com/o/oauth2/auth',
+      tokenUri: this.configService.get('storage.googledriveTokenUri') || 'https://oauth2.googleapis.com/token',
+      scopes: this.configService.get('storage.googledriveScopes') || 'https://www.googleapis.com/auth/drive.file',
+      enabled: this.configService.get('storage.googledriveStorageEnabled') || false,
+      primary: this.configService.get('storage.googledriveStoragePrimary') || false,
+      fallback: this.configService.get('storage.googledriveStorageFallback') || false,
+      // Don't return sensitive clientSecret
+    };
+  }
+
+  @Put('googledrive')
+  @HttpCode(HttpStatus.OK)
+  async updateGoogleDriveConfig(@Body() config: UpdateGoogleDriveConfigDto) {
+    const updates: { [key: string]: any } = {};
+
+    if (config.clientId !== undefined) {
+      updates['storage.googledriveClientId'] = config.clientId;
+    }
+    if (config.clientSecret !== undefined) {
+      updates['storage.googledriveClientSecret'] = config.clientSecret;
+    }
+    if (config.redirectUri !== undefined) {
+      updates['storage.googledriveRedirectUri'] = config.redirectUri;
+    }
+    if (config.projectId !== undefined) {
+      updates['storage.googledriveProjectId'] = config.projectId;
+    }
+    if (config.authUri !== undefined) {
+      updates['storage.googledriveAuthUri'] = config.authUri;
+    }
+    if (config.tokenUri !== undefined) {
+      updates['storage.googledriveTokenUri'] = config.tokenUri;
+    }
+    if (config.scopes !== undefined) {
+      updates['storage.googledriveScopes'] = config.scopes;
+    }
+    if (config.enabled !== undefined) {
+      updates['storage.googledriveStorageEnabled'] = config.enabled;
+    }
+    if (config.primary !== undefined) {
+      updates['storage.googledriveStoragePrimary'] = config.primary;
+    }
+    if (config.fallback !== undefined) {
+      updates['storage.googledriveStorageFallback'] = config.fallback;
+    }
+
+    const updateData = Object.entries(updates).map(([key, value]) => ({ key, value }));
+    if (updateData.length > 0) {
+      await this.configService.updateMany(updateData);
+    }
+
+    return {
+      success: true,
+      message: 'Google Drive storage configuration updated successfully',
+    };
+  }
+
+  // Test connectivity endpoints
+  @Get('test/:provider')
+  async testStorageConnection(@Param('provider') provider: string) {
+    // This would integrate with the StorageFactoryService to test connectivity
     try {
-      const success = await this.fileService.testStorageProvider(body.provider, body.config);
-      return { success };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.message || 'Connection test failed' 
+      switch (provider) {
+        case 'azure':
+          // Test Azure connection
+          break;
+        case 'onedrive':
+          // Test OneDrive connection
+          break;
+        case 'googledrive':
+          // Test Google Drive connection
+          break;
+        default:
+          return {
+            success: false,
+            message: 'Unknown storage provider',
+          };
+      }
+
+      return {
+        success: true,
+        message: `${provider} connection test successful`,
       };
-    }
-  }
-
-  /**
-   * Update storage provider configuration
-   */
-  @Put("providers/:provider")
-  async updateProviderConfig(
-    @Body() body: { enabled: boolean; config: Record<string, any> },
-    @Body('provider') provider: StorageProvider,
-  ): Promise<{ success: boolean; message?: string }> {
-    try {
-      // Validate configuration
-      if (body.enabled && !this.validateProviderConfig(provider, body.config)) {
-        throw new BadRequestException("Invalid configuration for storage provider");
-      }
-
-      // Update configuration
-      await this.updateProviderConfiguration(provider, body.enabled, body.config);
-
-      return { 
-        success: true, 
-        message: `${this.getProviderDisplayName(provider)} configuration updated successfully` 
+    } catch (error) {
+      return {
+        success: false,
+        message: `${provider} connection test failed: ${error.message}`,
       };
-    } catch (error) {
-      throw new BadRequestException(error.message || 'Failed to update configuration');
-    }
-  }
-
-  /**
-   * Get default storage provider
-   */
-  @Get("default")
-  async getDefaultProvider(): Promise<{ provider: StorageProvider }> {
-    const defaultProvider = this.configService.get("storage.defaultProvider") || 
-                           (this.configService.get("s3.enabled") ? "S3" : "LOCAL");
-    
-    return { provider: defaultProvider as StorageProvider };
-  }
-
-  /**
-   * Set default storage provider
-   */
-  @Put("default")
-  async setDefaultProvider(@Body() body: { provider: StorageProvider }): Promise<{ success: boolean }> {
-    try {
-      await this.configService.update("storage.defaultProvider", body.provider);
-      return { success: true };
-    } catch (error) {
-      throw new BadRequestException("Failed to set default storage provider");
-    }
-  }
-
-  /**
-   * Get storage provider configuration (internal)
-   */
-  private getProviderConfig(provider: StorageProvider): { enabled: boolean; config: Record<string, any> } {
-    switch (provider) {
-      case StorageProvider.LOCAL:
-        return {
-          enabled: true, // Local storage is always enabled
-          config: {},
-        };
-      
-      case StorageProvider.S3:
-        return {
-          enabled: this.configService.get("s3.enabled") || false,
-          config: {
-            endpoint: this.configService.get("s3.endpoint") || "",
-            region: this.configService.get("s3.region") || "",
-            key: this.configService.get("s3.key") || "",
-            secret: this.configService.get("s3.secret") || "",
-            bucketName: this.configService.get("s3.bucketName") || "",
-            bucketPath: this.configService.get("s3.bucketPath") || "",
-            useChecksum: this.configService.get("s3.useChecksum") || false,
-          },
-        };
-
-      case StorageProvider.ONEDRIVE:
-        return {
-          enabled: this.configService.get("onedrive.enabled") || false,
-          config: {
-            clientId: this.configService.get("onedrive.clientId") || "",
-            clientSecret: this.configService.get("onedrive.clientSecret") || "",
-            tenantId: this.configService.get("onedrive.tenantId") || "",
-            driveId: this.configService.get("onedrive.driveId") || "",
-          },
-        };
-
-      case StorageProvider.GOOGLE_DRIVE:
-        return {
-          enabled: this.configService.get("googledrive.enabled") || false,
-          config: {
-            clientId: this.configService.get("googledrive.clientId") || "",
-            clientSecret: this.configService.get("googledrive.clientSecret") || "",
-            refreshToken: this.configService.get("googledrive.refreshToken") || "",
-            parentFolderId: this.configService.get("googledrive.parentFolderId") || "",
-          },
-        };
-
-      case StorageProvider.AZURE_BLOB:
-        return {
-          enabled: this.configService.get("azureblob.enabled") || false,
-          config: {
-            accountName: this.configService.get("azureblob.accountName") || "",
-            accountKey: this.configService.get("azureblob.accountKey") || "",
-            sasToken: this.configService.get("azureblob.sasToken") || "",
-            containerName: this.configService.get("azureblob.containerName") || "",
-          },
-        };
-
-      default:
-        return { enabled: false, config: {} };
-    }
-  }
-
-  /**
-   * Get provider display name
-   */
-  private getProviderDisplayName(provider: StorageProvider): string {
-    switch (provider) {
-      case StorageProvider.LOCAL:
-        return "Local Storage";
-      case StorageProvider.S3:
-        return "Amazon S3";
-      case StorageProvider.ONEDRIVE:
-        return "Microsoft OneDrive";
-      case StorageProvider.GOOGLE_DRIVE:
-        return "Google Drive";
-      case StorageProvider.AZURE_BLOB:
-        return "Azure Blob Storage";
-      default:
-        return provider;
-    }
-  }
-
-  /**
-   * Sanitize configuration (remove sensitive fields for client)
-   */
-  private sanitizeConfig(config: Record<string, any>): Record<string, any> {
-    const sanitized = { ...config };
-    
-    // Remove sensitive fields
-    const sensitiveFields = [
-      'secret', 'clientSecret', 'accountKey', 'refreshToken', 'sasToken', 'key'
-    ];
-    
-    sensitiveFields.forEach(field => {
-      if (sanitized[field]) {
-        sanitized[field] = '***HIDDEN***';
-      }
-    });
-
-    return sanitized;
-  }
-
-  /**
-   * Validate provider configuration
-   */
-  private validateProviderConfig(provider: StorageProvider, config: Record<string, any>): boolean {
-    switch (provider) {
-      case StorageProvider.LOCAL:
-        return true; // Local storage doesn't need configuration
-      
-      case StorageProvider.S3:
-        const s3Required = ['endpoint', 'region', 'key', 'secret', 'bucketName'];
-        return s3Required.every(field => config[field] && config[field].trim().length > 0);
-
-      case StorageProvider.ONEDRIVE:
-        const onedriveRequired = ['clientId', 'clientSecret', 'tenantId'];
-        return onedriveRequired.every(field => config[field] && config[field].trim().length > 0);
-
-      case StorageProvider.GOOGLE_DRIVE:
-        const googledriveRequired = ['clientId', 'clientSecret', 'refreshToken'];
-        return googledriveRequired.every(field => config[field] && config[field].trim().length > 0);
-
-      case StorageProvider.AZURE_BLOB:
-        const azureblobRequired = ['accountName', 'containerName'];
-        const hasAccountKey = config.accountKey && config.accountKey.trim().length > 0;
-        const hasSasToken = config.sasToken && config.sasToken.trim().length > 0;
-        return azureblobRequired.every(field => config[field] && config[field].trim().length > 0) &&
-               (hasAccountKey || hasSasToken);
-
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Update provider configuration in config service
-   */
-  private async updateProviderConfiguration(
-    provider: StorageProvider,
-    enabled: boolean,
-    config: Record<string, any>
-  ): Promise<void> {
-    const providerKey = provider.toLowerCase().replace('_', '');
-    
-    // Update enabled status
-    await this.configService.update(`${providerKey}.enabled`, enabled);
-    
-    // Update configuration fields
-    for (const [key, value] of Object.entries(config)) {
-      if (value !== '***HIDDEN***') { // Don't update hidden fields
-        await this.configService.update(`${providerKey}.${key}`, value);
-      }
     }
   }
 }

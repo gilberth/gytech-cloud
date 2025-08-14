@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '../../config/config.service';
 import { 
   BlobServiceClient, 
   StorageSharedKeyCredential,
@@ -58,11 +58,11 @@ export class AzureBlobCloudStorageService extends BaseStorageService {
 
   private initializeClient() {
     const config: AzureBlobConfig = {
-      accountName: this.configService.get<string>('AZURE_STORAGE_ACCOUNT_NAME'),
-      accountKey: this.configService.get<string>('AZURE_STORAGE_ACCOUNT_KEY'),
-      sasToken: this.configService.get<string>('AZURE_STORAGE_SAS_TOKEN'),
-      containerName: this.configService.get<string>('AZURE_STORAGE_CONTAINER_NAME', 'gytech-cloud'),
-      endpoint: this.configService.get<string>('AZURE_STORAGE_ENDPOINT'),
+      accountName: this.configService.get('azureblob.accountName'),
+      accountKey: this.configService.get('azureblob.accountKey'),
+      sasToken: this.configService.get('azureblob.sasToken'),
+      containerName: this.configService.get('azureblob.containerName') || 'gytech-cloud',
+      endpoint: this.configService.get('azureblob.endpoint'),
     };
 
     if (!config.accountName || !config.containerName) {
@@ -375,9 +375,19 @@ export class AzureBlobCloudStorageService extends BaseStorageService {
         count++;
       }
 
+      // Get the continuation token from the iterator if available
+      let nextContinuationToken: string | undefined;
+      try {
+        const iterator = response as any;
+        nextContinuationToken = iterator.continuationToken;
+      } catch (error) {
+        // Continuation token not available, which is fine
+        nextContinuationToken = undefined;
+      }
+
       return {
         files,
-        continuationToken: response.continuationToken,
+        continuationToken: nextContinuationToken,
       };
     } catch (error) {
       this.handleStorageError(error, 'listFiles');

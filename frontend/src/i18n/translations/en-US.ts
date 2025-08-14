@@ -421,6 +421,8 @@ export default {
     "As you have a configured GYTECH Cloud with a configuration file, you can't change the configuration through the UI.",
 
   "admin.config.title": "Configuration",
+  "admin.config.storage.title": "Storage Management",
+  "admin.migration.title": "Storage Migration",
   "admin.config.category.general": "General",
   "admin.config.category.share": "Share",
   "admin.config.category.cache": "Cache",

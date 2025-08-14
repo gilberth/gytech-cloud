@@ -1,50 +1,43 @@
-import {
-  IsBoolean,
-  IsEnum,
-  IsOptional,
-  IsString,
-  Length,
-  ValidateIf,
-} from "class-validator";
-
-enum ConfigGoogleDriveKeys {
-  ENABLED = "googledrive.enabled",
-  CLIENT_ID = "googledrive.clientId",
-  CLIENT_SECRET = "googledrive.clientSecret",
-  REDIRECT_URI = "googledrive.redirectUri",
-  FOLDER_ID = "googledrive.folderId",
-  SERVICE_ACCOUNT_KEY = "googledrive.serviceAccountKey",
-}
+import { IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class UpdateGoogleDriveConfigDto {
-  @IsEnum(ConfigGoogleDriveKeys)
-  key: ConfigGoogleDriveKeys;
+  @IsOptional()
+  @IsString()
+  clientId?: string;
 
-  @ValidateIf((object, value) => {
-    return object.key == ConfigGoogleDriveKeys.ENABLED;
-  })
+  @IsOptional()
+  @IsString()
+  clientSecret?: string;
+
+  @IsOptional()
+  @IsString()
+  redirectUri?: string;
+
+  @IsOptional()
+  @IsString()
+  projectId?: string;
+
+  @IsOptional()
+  @IsString()
+  authUri?: string;
+
+  @IsOptional()
+  @IsString()
+  tokenUri?: string;
+
+  @IsOptional()
+  @IsString()
+  scopes?: string;
+
+  @IsOptional()
   @IsBoolean()
-  @IsOptional()
-  value?: boolean;
+  enabled?: boolean;
 
-  @ValidateIf((object, value) => {
-    return [
-      ConfigGoogleDriveKeys.CLIENT_ID,
-      ConfigGoogleDriveKeys.CLIENT_SECRET,
-      ConfigGoogleDriveKeys.REDIRECT_URI,
-      ConfigGoogleDriveKeys.FOLDER_ID,
-    ].includes(object.key);
-  })
-  @IsString()
   @IsOptional()
-  @Length(0, 2048)
-  value?: string;
+  @IsBoolean()
+  primary?: boolean;
 
-  @ValidateIf((object, value) => {
-    return object.key == ConfigGoogleDriveKeys.SERVICE_ACCOUNT_KEY;
-  })
-  @IsString()
   @IsOptional()
-  @Length(0, 10240)
-  value?: string;
+  @IsBoolean()
+  fallback?: boolean;
 }

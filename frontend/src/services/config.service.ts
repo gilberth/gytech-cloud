@@ -16,13 +16,27 @@ const updateMany = async (data: UpdateConfig[]): Promise<AdminConfig[]> => {
 };
 
 const get = (key: string, configVariables: Config[]): any => {
-  if (!configVariables) return null;
+  if (!configVariables) {
+    console.warn(`Config variables not loaded, returning null for ${key}`);
+    return null;
+  }
 
   const configVariable = configVariables.filter(
     (variable) => variable.key == key,
   )[0];
 
-  if (!configVariable) throw new Error(`Config variable ${key} not found`);
+  if (!configVariable) {
+    console.warn(`Config variable ${key} not found, returning default for type`);
+    // Return sensible defaults instead of throwing
+    const [category, name] = key.split('.');
+    if (key.includes('enabled') || key.includes('allow') || key.includes('show')) {
+      return false; // Default boolean configs to false
+    }
+    if (key.includes('max') || key.includes('count') || key.includes('size')) {
+      return 0; // Default numeric configs to 0
+    }
+    return ''; // Default string configs to empty string
+  }
 
   const value = configVariable.value ?? configVariable.defaultValue;
 
@@ -32,6 +46,8 @@ const get = (key: string, configVariables: Config[]): any => {
   if (configVariable.type == "string" || configVariable.type == "text")
     return value;
   if (configVariable.type == "timespan") return stringToTimespan(value);
+  
+  return value; // Fallback to raw value
 };
 
 const finishSetup = async (): Promise<AdminConfig[]> => {

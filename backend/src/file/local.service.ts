@@ -171,4 +171,18 @@ export class LocalFileService {
       });
     });
   }
+
+  async createZip(shareId: string): Promise<void> {
+    // Implementation for creating zip files - placeholder for now
+    // This would typically use a library like archiver to create zip files
+    return Promise.resolve();
+  }
+
+  async deleteZip(shareId: string): Promise<void> {
+    try {
+      await fs.unlink(`${SHARE_DIRECTORY}/${shareId}/archive.zip`);
+    } catch (error) {
+      // File might not exist, ignore error
+    }
+  }
 }

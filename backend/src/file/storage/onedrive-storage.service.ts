@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '../../config/config.service';
 import { AuthenticationProvider, Client } from '@microsoft/microsoft-graph-client';
 import { BaseStorageService } from './base-storage.service';
 import {
@@ -64,7 +64,7 @@ class OneDriveAuthProvider implements AuthenticationProvider {
       throw new Error(`Failed to refresh OneDrive token: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     this.accessToken = data.access_token;
     
     return this.accessToken;
@@ -93,11 +93,11 @@ export class OneDriveStorageService extends BaseStorageService {
 
   private initializeClient() {
     const config: OneDriveConfig = {
-      clientId: this.configService.get<string>('ONEDRIVE_CLIENT_ID'),
-      clientSecret: this.configService.get<string>('ONEDRIVE_CLIENT_SECRET'),
-      tenantId: this.configService.get<string>('ONEDRIVE_TENANT_ID'),
-      refreshToken: this.configService.get<string>('ONEDRIVE_REFRESH_TOKEN'),
-      rootPath: this.configService.get<string>('ONEDRIVE_ROOT_PATH', '/'),
+      clientId: this.configService.get('onedrive.clientId'),
+      clientSecret: this.configService.get('onedrive.clientSecret'),
+      tenantId: this.configService.get('onedrive.tenantId'),
+      refreshToken: this.configService.get('onedrive.refreshToken'),
+      rootPath: this.configService.get('onedrive.rootPath') || '/',
     };
 
     if (!config.clientId || !config.clientSecret || !config.tenantId) {
@@ -256,7 +256,7 @@ export class OneDriveStorageService extends BaseStorageService {
         throw new Error(`Upload part failed: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
       return { etag: result.eTag || `part-${partNumber}` };
     } catch (error) {
       this.handleStorageError(error, 'multipartUploadPart');

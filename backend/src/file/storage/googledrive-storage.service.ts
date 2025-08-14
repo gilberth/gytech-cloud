@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '../../config/config.service';
 import { google, drive_v3 } from 'googleapis';
 import { BaseStorageService } from './base-storage.service';
 import {
@@ -45,11 +45,11 @@ export class GoogleDriveStorageService extends BaseStorageService {
 
   private initializeClient() {
     const config: GoogleDriveConfig = {
-      clientId: this.configService.get<string>('GOOGLE_DRIVE_CLIENT_ID'),
-      clientSecret: this.configService.get<string>('GOOGLE_DRIVE_CLIENT_SECRET'),
-      refreshToken: this.configService.get<string>('GOOGLE_DRIVE_REFRESH_TOKEN'),
-      accessToken: this.configService.get<string>('GOOGLE_DRIVE_ACCESS_TOKEN'),
-      rootFolderId: this.configService.get<string>('GOOGLE_DRIVE_ROOT_FOLDER_ID', 'root'),
+      clientId: this.configService.get('googledrive.clientId'),
+      clientSecret: this.configService.get('googledrive.clientSecret'),
+      refreshToken: this.configService.get('googledrive.refreshToken'),
+      accessToken: this.configService.get('googledrive.accessToken'),
+      rootFolderId: this.configService.get('googledrive.parentFolderId') || 'root',
     };
 
     if (!config.clientId || !config.clientSecret || !config.refreshToken) {
@@ -120,17 +120,9 @@ export class GoogleDriveStorageService extends BaseStorageService {
       const response = await this.drive.files.get({
         fileId,
         alt: 'media',
-        headers,
-      });
+      }, { responseType: 'stream' });
 
-      if (response.data instanceof Readable) {
-        return response.data;
-      }
-
-      const readable = new Readable();
-      readable.push(response.data as any);
-      readable.push(null);
-      return readable;
+      return response.data as NodeJS.ReadableStream;
     } catch (error) {
       this.handleStorageError(error, 'download');
     }
@@ -168,7 +160,7 @@ export class GoogleDriveStorageService extends BaseStorageService {
           id: file.id,
           name: file.name,
           webViewLink: file.webViewLink,
-          parents: file.parents,
+          parents: file.parents?.[0] || 'root',
         },
       };
     } catch (error) {
@@ -204,7 +196,7 @@ export class GoogleDriveStorageService extends BaseStorageService {
       });
 
       return {
-        uploadId: uploadUrl.config.url || `gdrive-${Date.now()}`,
+        uploadId: String(uploadUrl.config?.url || `gdrive-${Date.now()}`),
         metadata: {
           fileMetadata,
           parentFolderId,

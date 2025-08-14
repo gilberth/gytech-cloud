@@ -143,24 +143,36 @@ const Header = () => {
     },
   ];
 
-  if (config.get("share.allowUnauthenticatedShares")) {
-    unauthenticatedLinks.unshift({
-      link: "/upload",
-      label: t("navbar.upload"),
-    });
+  try {
+    if (config.get("share.allowUnauthenticatedShares")) {
+      unauthenticatedLinks.unshift({
+        link: "/upload",
+        label: t("navbar.upload"),
+      });
+    }
+  } catch (error) {
+    console.warn('Error loading share.allowUnauthenticatedShares config:', error);
   }
 
-  if (config.get("general.showHomePage"))
-    unauthenticatedLinks.unshift({
-      link: "/",
-      label: t("navbar.home"),
-    });
+  try {
+    if (config.get("general.showHomePage"))
+      unauthenticatedLinks.unshift({
+        link: "/",
+        label: t("navbar.home"),
+      });
+  } catch (error) {
+    console.warn('Error loading general.showHomePage config:', error);
+  }
 
-  if (config.get("share.allowRegistration"))
-    unauthenticatedLinks.push({
-      link: "/auth/signUp",
-      label: t("navbar.signup"),
-    });
+  try {
+    if (config.get("share.allowRegistration"))
+      unauthenticatedLinks.push({
+        link: "/auth/signUp",
+        label: t("navbar.signup"),
+      });
+  } catch (error) {
+    console.warn('Error loading share.allowRegistration config:', error);
+  }
 
   const { classes, cx } = useStyles();
   const items = (

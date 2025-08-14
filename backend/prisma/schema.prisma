@@ -8,61 +8,50 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  username String  @unique
-  email    String  @unique
-  password String?
-  isAdmin  Boolean @default(false)
-  ldapDN   String? @unique
-
-  shares        Share[]
-  refreshTokens RefreshToken[]
-  loginTokens   LoginToken[]
-  reverseShares ReverseShare[]
-
+  id                 String              @id @default(uuid())
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  username           String              @unique
+  email              String              @unique
+  password           String?
+  isAdmin            Boolean             @default(false)
   totpEnabled        Boolean             @default(false)
   totpVerified       Boolean             @default(false)
   totpSecret         String?
+  ldapDN             String?             @unique
+  loginTokens        LoginToken[]
+  oAuthUsers         OAuthUser[]
+  refreshTokens      RefreshToken[]
   resetPasswordToken ResetPasswordToken?
-
-  oAuthUsers OAuthUser[]
+  reverseShares      ReverseShare[]
+  shares             Share[]
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique @default(uuid())
-  createdAt DateTime @default(now())
-
-  expiresAt DateTime
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  oauthIDToken  String? // prefixed with the ID of the issuing OAuth provider, separated by a colon
+  id           String   @id @default(uuid())
+  token        String   @unique @default(uuid())
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  userId       String
+  oauthIDToken String?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model LoginToken {
   token     String   @id @default(uuid())
   createdAt DateTime @default(now())
-
   expiresAt DateTime
-
-  userId String
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  used   Boolean @default(false)
+  userId    String
+  used      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ResetPasswordToken {
   token     String   @id @default(uuid())
   createdAt DateTime @default(now())
-
   expiresAt DateTime
-
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model OAuthUser {
@@ -75,33 +64,28 @@ model OAuthUser {
 }
 
 model Share {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-
-  name          String?
-  uploadLocked  Boolean  @default(false)
-  isZipReady    Boolean  @default(false)
-  views         Int      @default(0)
-  expiration    DateTime
-  description   String?
-  removedReason String?
-
-  creatorId String?
-  creator   User?   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-
-  reverseShareId String?
-  reverseShare   ReverseShare? @relation(fields: [reverseShareId], references: [id], onDelete: Cascade)
-
-  security   ShareSecurity?
-  recipients ShareRecipient[]
-  files      File[]
-  storageProvider String @default("LOCAL")
+  id              String           @id @default(uuid())
+  createdAt       DateTime         @default(now())
+  name            String?
+  uploadLocked    Boolean          @default(false)
+  isZipReady      Boolean          @default(false)
+  views           Int              @default(0)
+  expiration      DateTime
+  description     String?
+  removedReason   String?
+  creatorId       String?
+  reverseShareId  String?
+  storageProvider String           @default("LOCAL")
+  files           File[]
+  reverseShare    ReverseShare?    @relation(fields: [reverseShareId], references: [id], onDelete: Cascade)
+  creator         User?            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  recipients      ShareRecipient[]
+  security        ShareSecurity?
 }
 
 model ReverseShare {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-
+  id                    String   @id @default(uuid())
+  createdAt             DateTime @default(now())
   token                 String   @unique @default(uuid())
   shareExpiration       DateTime
   maxShareSize          String
@@ -109,81 +93,70 @@ model ReverseShare {
   remainingUses         Int
   simplified            Boolean  @default(false)
   publicAccess          Boolean  @default(true)
-
-  creatorId String
-  creator   User   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-
-  shares Share[]
+  creatorId             String
+  creator               User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  shares                Share[]
 }
 
 model ShareRecipient {
-  id    String @id @default(uuid())
-  email String
-
+  id      String @id @default(uuid())
+  email   String
   shareId String
   share   Share  @relation(fields: [shareId], references: [id], onDelete: Cascade)
 }
 
 model File {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-
-  name String
-  size String
-
-  shareId String
-  share   Share  @relation(fields: [shareId], references: [id], onDelete: Cascade)
-
+  id               String                @id @default(uuid())
+  createdAt        DateTime              @default(now())
+  name             String
+  size             String
+  shareId          String
+  share            Share                 @relation(fields: [shareId], references: [id], onDelete: Cascade)
   storageLocations FileStorageLocation[]
 }
 
 model FileStorageLocation {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  fileId    String
-  file      File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
-
-  provider    String  // LOCAL, S3, ONEDRIVE, GOOGLE_DRIVE, AZURE_BLOB
-  storedPath  String
-  state       String  // LOCAL_ONLY, SYNCING, SYNCED, FAILED, DEPRECATED
-  checksum    String?
-  sizeBytes   BigInt?
-
+  id            String    @id @default(uuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  fileId        String
+  provider      String
+  storedPath    String
+  state         String
+  checksum      String?
+  sizeBytes     BigInt?
   lastAttemptAt DateTime?
-  attempts      Int      @default(0)
+  attempts      Int       @default(0)
   lastSyncAt    DateTime?
   errorCode     String?
   errorMessage  String?
+  file          File      @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
   @@unique([fileId, provider], name: "fileId_provider")
   @@index([state])
   @@index([provider, state])
+  @@index([fileId, provider])
 }
 
 model ShareSecurity {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
-
-  password String?
-  maxViews Int?
-
-  shareId String? @unique
-  share   Share?  @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  password  String?
+  maxViews  Int?
+  shareId   String?  @unique
+  share     Share?   @relation(fields: [shareId], references: [id], onDelete: Cascade)
 }
 
 model Config {
-  updatedAt DateTime @updatedAt
-
+  updatedAt    DateTime @updatedAt
   name         String
   category     String
   type         String
-  defaultValue String  @default("")
+  defaultValue String   @default("")
   value        String?
-  obscured     Boolean @default(false)
-  secret       Boolean @default(true)
-  locked       Boolean @default(false)
+  obscured     Boolean  @default(false)
+  secret       Boolean  @default(true)
+  locked       Boolean  @default(false)
   order        Int
 
   @@id([name, category])

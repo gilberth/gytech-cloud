@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  gytech-app:
+    image: ghcr.io/gilberth/gytech-cloud:latest
+    container_name: gytech-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Basic Configuration
+      - DATABASE_URL=file:./data/pingvin-share.db
+      - FRONTEND_URL=http://localhost:3000
+      - BACKEND_URL=http://localhost:3000/api
+      
+      # Multi-Storage Configuration
+      - PRIMARY_STORAGE=LOCAL
+      - ONEDRIVE_ENABLED=false
+      - GOOGLE_DRIVE_ENABLED=false
+      - AZURE_BLOB_ENABLED=false
+      - S3_ENABLED=false
+      
+      # Circuit Breaker Settings
+      - STORAGE_MAX_CONSECUTIVE_FAILURES=3
+      - STORAGE_CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
+      - STORAGE_CIRCUIT_BREAKER_RETRY_INTERVAL_MS=60000
+      - STORAGE_HEALTH_CHECK_INTERVAL_MS=300000
+      
+      # Queue Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - STORAGE_SYNC_CONCURRENCY=5
+      - STORAGE_RECONCILE_CRON=0 2 * * *
+      
+      # DR Configuration
+      - DR_SNAPSHOT_INTERVAL_MINUTES=60
+      - DR_RETENTION_HOURLY=24
+      - DR_RETENTION_DAILY=7
+      - DR_RETENTION_WEEKLY=4
+      - DR_WAL_DELTA_ENABLED=false
+      - DR_INTEGRITY_SAMPLE_PERCENT=5
+      - DR_BACKUP_PATH=/app/data/backups
+      
+      # Storage Sync Policy
+      - STORAGE_SYNC_POLICY=SYNC_ASYNC
+      
+    volumes:
+      - gytech-data-dev:/app/data
+      - gytech-backups-dev:/app/data/backups
+    depends_on:
+      - redis
+    networks:
+      - gytech-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/configs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  redis:
+    image: redis:7-alpine
+    container_name: gytech-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data-dev:/data
+    networks:
+      - gytech-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  gytech-data-dev:
+    driver: local
+  gytech-backups-dev:
+    driver: local
+  redis-data-dev:
+    driver: local
+
+networks:
+  gytech-network:
+    driver: bridge

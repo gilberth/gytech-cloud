@@ -1,4 +1,4 @@
-import { Global, Module } from "@nestjs/common";
+import { Global, Module, forwardRef } from "@nestjs/common";
 import { Config } from "@prisma/client";
 import { EmailModule } from "src/email/email.module";
 import { FileModule } from "src/file/file.module";
@@ -10,7 +10,7 @@ import { LogoService } from "./logo.service";
 
 @Global()
 @Module({
-  imports: [EmailModule, FileModule],
+  imports: [EmailModule, forwardRef(() => FileModule)],
   providers: [
     {
       provide: "CONFIG_VARIABLES",

@@ -7,16 +7,648 @@ import {
   Container,
   Group,
   LoadingOverlay,
-  Modal,
   Progress,
-  Select,
   Stack,
-  Switch,
   Text,
-  TextInput,
   Title,
   Tooltip,
-  PasswordInput,
   Divider,
   Code,
-} from "@mantine/core";\nimport { useForm } from "@mantine/form";\nimport { useModals } from "@mantine/modals";\nimport { showNotification } from "@mantine/notifications";\nimport {\n  TbCheck,\n  TbCloud,\n  TbCloudOff,\n  TbRefresh,\n  TbSettings,\n  TbX,\n  TbExchange,\n  TbDatabase,\n} from "react-icons/tb";\nimport { useEffect, useState } from "react";\nimport { FormattedMessage } from "react-intl";\nimport Meta from "../../components/Meta";\nimport useTranslate from "../../hooks/useTranslate.hook";\nimport api from "../../services/api.service";\nimport { byteToHumanSizeString } from "../../utils/fileSize.util";\n\ninterface StorageProvider {\n  provider: string;\n  enabled: boolean;\n  displayName: string;\n  config: Record<string, any>;\n  capabilities?: {\n    features: string[];\n    availableSpace: number | null;\n    connected: boolean;\n  };\n}\n\ninterface MigrationProgress {\n  shareId: string;\n  progress: number;\n  status: 'pending' | 'migrating' | 'completed' | 'failed';\n  error?: string;\n}\n\nconst StorageManagement = () => {\n  const t = useTranslate();\n  const modals = useModals();\n  \n  const [providers, setProviders] = useState<StorageProvider[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [defaultProvider, setDefaultProvider] = useState<string>(\"LOCAL\");\n  const [testingProvider, setTestingProvider] = useState<string | null>(null);\n  const [configModalProvider, setConfigModalProvider] = useState<StorageProvider | null>(null);\n  const [migrationProgress, setMigrationProgress] = useState<MigrationProgress[]>([]);\n\n  const form = useForm({\n    initialValues: {},\n  });\n\n  // Load storage providers\n  const loadProviders = async () => {\n    try {\n      setLoading(true);\n      const [providersResponse, defaultResponse] = await Promise.all([\n        api.get(\"/admin/storage/providers\"),\n        api.get(\"/admin/storage/default\"),\n      ]);\n      setProviders(providersResponse.data);\n      setDefaultProvider(defaultResponse.data.provider);\n    } catch (error) {\n      showNotification({\n        title: \"Error\",\n        message: \"Failed to load storage providers\",\n        color: \"red\",\n      });\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  // Test provider connection\n  const testConnection = async (provider: StorageProvider) => {\n    setTestingProvider(provider.provider);\n    try {\n      const response = await api.post(\"/admin/storage/test-connection\", {\n        provider: provider.provider,\n        config: provider.config,\n      });\n      \n      if (response.data.success) {\n        showNotification({\n          title: \"Success\",\n          message: `Connection to ${provider.displayName} successful`,\n          color: \"green\",\n        });\n      } else {\n        showNotification({\n          title: \"Connection Failed\",\n          message: response.data.error || \"Connection test failed\",\n          color: \"red\",\n        });\n      }\n    } catch (error) {\n      showNotification({\n        title: \"Error\",\n        message: \"Failed to test connection\",\n        color: \"red\",\n      });\n    } finally {\n      setTestingProvider(null);\n    }\n  };\n\n  // Update provider configuration\n  const updateProvider = async (provider: StorageProvider, enabled: boolean, config: Record<string, any>) => {\n    try {\n      await api.put(`/admin/storage/providers/${provider.provider}`, {\n        enabled,\n        config,\n      });\n      \n      showNotification({\n        title: \"Success\",\n        message: `${provider.displayName} configuration updated`,\n        color: \"green\",\n      });\n      \n      await loadProviders();\n    } catch (error) {\n      showNotification({\n        title: \"Error\",\n        message: \"Failed to update configuration\",\n        color: \"red\",\n      });\n    }\n  };\n\n  // Set default provider\n  const updateDefaultProvider = async (providerType: string) => {\n    try {\n      await api.put(\"/admin/storage/default\", { provider: providerType });\n      setDefaultProvider(providerType);\n      \n      showNotification({\n        title: \"Success\",\n        message: \"Default storage provider updated\",\n        color: \"green\",\n      });\n    } catch (error) {\n      showNotification({\n        title: \"Error\",\n        message: \"Failed to update default provider\",\n        color: \"red\",\n      });\n    }\n  };\n\n  // Get provider icon\n  const getProviderIcon = (providerType: string) => {\n    switch (providerType) {\n      case \"LOCAL\":\n        return <TbDatabase size={20} />;\n      case \"S3\":\n        return <TbCloud size={20} />;\n      case \"ONEDRIVE\":\n        return <TbCloud size={20} color=\"#0078d4\" />;\n      case \"GOOGLE_DRIVE\":\n        return <TbCloud size={20} color=\"#4285f4\" />;\n      case \"AZURE_BLOB\":\n        return <TbCloud size={20} color=\"#0078d4\" />;\n      default:\n        return <TbCloud size={20} />;\n    }\n  };\n\n  // Get provider status badge\n  const getStatusBadge = (provider: StorageProvider) => {\n    if (!provider.enabled) {\n      return <Badge color=\"gray\">Disabled</Badge>;\n    }\n    \n    if (!provider.capabilities?.connected) {\n      return <Badge color=\"red\">Disconnected</Badge>;\n    }\n    \n    return <Badge color=\"green\">Connected</Badge>;\n  };\n\n  // Configuration modal\n  const openConfigModal = (provider: StorageProvider) => {\n    setConfigModalProvider(provider);\n    form.setValues(provider.config);\n  };\n\n  const closeConfigModal = () => {\n    setConfigModalProvider(null);\n    form.reset();\n  };\n\n  const saveConfiguration = async () => {\n    if (!configModalProvider) return;\n    \n    await updateProvider(\n      configModalProvider,\n      configModalProvider.enabled,\n      form.values\n    );\n    closeConfigModal();\n  };\n\n  // Render configuration fields based on provider type\n  const renderConfigFields = (provider: StorageProvider) => {\n    switch (provider.provider) {\n      case \"S3\":\n        return (\n          <>\n            <TextInput\n              label=\"Endpoint\"\n              placeholder=\"https://s3.amazonaws.com\"\n              {...form.getInputProps(\"endpoint\")}\n            />\n            <Group grow>\n              <TextInput\n                label=\"Region\"\n                placeholder=\"us-east-1\"\n                {...form.getInputProps(\"region\")}\n              />\n              <TextInput\n                label=\"Bucket Name\"\n                placeholder=\"my-bucket\"\n                {...form.getInputProps(\"bucketName\")}\n              />\n            </Group>\n            <Group grow>\n              <TextInput\n                label=\"Access Key\"\n                placeholder=\"AKIAIOSFODNN7EXAMPLE\"\n                {...form.getInputProps(\"key\")}\n              />\n              <PasswordInput\n                label=\"Secret Key\"\n                placeholder=\"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\"\n                {...form.getInputProps(\"secret\")}\n              />\n            </Group>\n            <TextInput\n              label=\"Bucket Path (Optional)\"\n              placeholder=\"folder/subfolder\"\n              {...form.getInputProps(\"bucketPath\")}\n            />\n          </>\n        );\n      \n      case \"ONEDRIVE\":\n        return (\n          <>\n            <Group grow>\n              <TextInput\n                label=\"Client ID\"\n                placeholder=\"12345678-1234-1234-1234-123456789012\"\n                {...form.getInputProps(\"clientId\")}\n              />\n              <PasswordInput\n                label=\"Client Secret\"\n                placeholder=\"client-secret-value\"\n                {...form.getInputProps(\"clientSecret\")}\n              />\n            </Group>\n            <Group grow>\n              <TextInput\n                label=\"Tenant ID\"\n                placeholder=\"87654321-4321-4321-4321-210987654321\"\n                {...form.getInputProps(\"tenantId\")}\n              />\n              <TextInput\n                label=\"Drive ID (Optional)\"\n                placeholder=\"me/drive or specific drive ID\"\n                {...form.getInputProps(\"driveId\")}\n              />\n            </Group>\n          </>\n        );\n      \n      case \"GOOGLE_DRIVE\":\n        return (\n          <>\n            <Group grow>\n              <TextInput\n                label=\"Client ID\"\n                placeholder=\"123456789-abcdefghijklmnop.apps.googleusercontent.com\"\n                {...form.getInputProps(\"clientId\")}\n              />\n              <PasswordInput\n                label=\"Client Secret\"\n                placeholder=\"GOCSPX-abcdefghijklmnopqrstuvwxyz\"\n                {...form.getInputProps(\"clientSecret\")}\n              />\n            </Group>\n            <Group grow>\n              <PasswordInput\n                label=\"Refresh Token\"\n                placeholder=\"1//0abcdefghijk...\"\n                {...form.getInputProps(\"refreshToken\")}\n              />\n              <TextInput\n                label=\"Parent Folder ID (Optional)\"\n                placeholder=\"1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms\"\n                {...form.getInputProps(\"parentFolderId\")}\n              />\n            </Group>\n          </>\n        );\n      \n      case \"AZURE_BLOB\":\n        return (\n          <>\n            <Group grow>\n              <TextInput\n                label=\"Account Name\"\n                placeholder=\"mystorageaccount\"\n                {...form.getInputProps(\"accountName\")}\n              />\n              <TextInput\n                label=\"Container Name\"\n                placeholder=\"gytech-cloud\"\n                {...form.getInputProps(\"containerName\")}\n              />\n            </Group>\n            <PasswordInput\n              label=\"Account Key\"\n              placeholder=\"abcdefghijklmnopqrstuvwxyz...\"\n              {...form.getInputProps(\"accountKey\")}\n            />\n            <Text size=\"xs\" color=\"dimmed\">\n              Note: You can use either Account Key or SAS Token\n            </Text>\n            <PasswordInput\n              label=\"SAS Token (Alternative to Account Key)\"\n              placeholder=\"?sv=2021-06-08&ss=b&srt=sco&sp=rwdlacup...\"\n              {...form.getInputProps(\"sasToken\")}\n            />\n          </>\n        );\n      \n      default:\n        return null;\n    }\n  };\n\n  useEffect(() => {\n    loadProviders();\n  }, []);\n\n  return (\n    <>\n      <Meta title=\"Storage Management\" />\n      <Container size=\"lg\">\n        <Group position=\"apart\" mb=\"md\">\n          <Title order={2}>\n            <FormattedMessage id=\"admin.config.storage.title\" defaultMessage=\"Storage Management\" />\n          </Title>\n          <Button leftIcon={<TbRefresh />} onClick={loadProviders} loading={loading}>\n            Refresh\n          </Button>\n        </Group>\n\n        <LoadingOverlay visible={loading} />\n\n        {/* Default Provider Selection */}\n        <Card withBorder mb=\"md\">\n          <Group position=\"apart\" mb=\"md\">\n            <Text weight={500}>Default Storage Provider</Text>\n          </Group>\n          <Select\n            value={defaultProvider}\n            onChange={updateDefaultProvider}\n            data={providers\n              .filter(p => p.enabled)\n              .map(p => ({ value: p.provider, label: p.displayName }))\n            }\n            icon={getProviderIcon(defaultProvider)}\n          />\n          <Text size=\"xs\" color=\"dimmed\" mt=\"xs\">\n            New shares will use this storage provider by default\n          </Text>\n        </Card>\n\n        {/* Storage Providers */}\n        <Stack spacing=\"md\">\n          {providers.map((provider) => (\n            <Card key={provider.provider} withBorder>\n              <Group position=\"apart\" mb=\"md\">\n                <Group>\n                  {getProviderIcon(provider.provider)}\n                  <div>\n                    <Text weight={500}>{provider.displayName}</Text>\n                    <Text size=\"xs\" color=\"dimmed\">\n                      {provider.provider}\n                    </Text>\n                  </div>\n                </Group>\n                \n                <Group spacing=\"xs\">\n                  {getStatusBadge(provider)}\n                  {provider.enabled && (\n                    <Tooltip label=\"Test Connection\">\n                      <ActionIcon\n                        loading={testingProvider === provider.provider}\n                        onClick={() => testConnection(provider)}\n                      >\n                        <TbRefresh size={16} />\n                      </ActionIcon>\n                    </Tooltip>\n                  )}\n                  {provider.provider !== \"LOCAL\" && (\n                    <Tooltip label=\"Configure\">\n                      <ActionIcon onClick={() => openConfigModal(provider)}>\n                        <TbSettings size={16} />\n                      </ActionIcon>\n                    </Tooltip>\n                  )}\n                </Group>\n              </Group>\n\n              {/* Provider Info */}\n              <Group spacing=\"xl\" mb=\"md\">\n                <div>\n                  <Text size=\"xs\" color=\"dimmed\">Status</Text>\n                  <Group spacing=\"xs\">\n                    {provider.capabilities?.connected ? (\n                      <>\n                        <TbCheck size={14} color=\"green\" />\n                        <Text size=\"sm\">Connected</Text>\n                      </>\n                    ) : (\n                      <>\n                        <TbX size={14} color=\"red\" />\n                        <Text size=\"sm\">Disconnected</Text>\n                      </>\n                    )}\n                  </Group>\n                </div>\n                \n                {provider.capabilities?.availableSpace !== null && (\n                  <div>\n                    <Text size=\"xs\" color=\"dimmed\">Available Space</Text>\n                    <Text size=\"sm\">\n                      {provider.capabilities?.availableSpace\n                        ? byteToHumanSizeString(provider.capabilities.availableSpace)\n                        : \"Unlimited\"\n                      }\n                    </Text>\n                  </div>\n                )}\n                \n                <div>\n                  <Text size=\"xs\" color=\"dimmed\">Features</Text>\n                  <Group spacing=\"xs\">\n                    {provider.capabilities?.features.slice(0, 3).map((feature) => (\n                      <Badge key={feature} size=\"xs\" variant=\"light\">\n                        {feature.replace('_', ' ')}\n                      </Badge>\n                    ))}\n                    {(provider.capabilities?.features.length || 0) > 3 && (\n                      <Badge size=\"xs\" variant=\"light\" color=\"gray\">\n                        +{(provider.capabilities?.features.length || 0) - 3} more\n                      </Badge>\n                    )}\n                  </Group>\n                </div>\n              </Group>\n\n              {/* Enable/Disable Toggle */}\n              {provider.provider !== \"LOCAL\" && (\n                <Switch\n                  label={`Enable ${provider.displayName}`}\n                  checked={provider.enabled}\n                  onChange={(event) => {\n                    updateProvider(provider, event.currentTarget.checked, provider.config);\n                  }}\n                />\n              )}\n            </Card>\n          ))}\n        </Stack>\n\n        {/* Configuration Modal */}\n        <Modal\n          opened={!!configModalProvider}\n          onClose={closeConfigModal}\n          title={`Configure ${configModalProvider?.displayName}`}\n          size=\"lg\"\n        >\n          {configModalProvider && (\n            <Stack spacing=\"md\">\n              {renderConfigFields(configModalProvider)}\n              \n              <Divider />\n              \n              <Group position=\"right\">\n                <Button variant=\"light\" onClick={closeConfigModal}>\n                  Cancel\n                </Button>\n                <Button onClick={saveConfiguration}>\n                  Save Configuration\n                </Button>\n              </Group>\n            </Stack>\n          )}\n        </Modal>\n      </Container>\n    </>\n  );\n};\n\nexport default StorageManagement;"
+  Grid,
+  Paper,
+  Center,
+} from "@mantine/core";
+import { showNotification } from "@mantine/notifications";
+import {
+  TbCheck,
+  TbCloud,
+  TbCloudOff,
+  TbRefresh,
+  TbX,
+  TbExchange,
+  TbDatabase,
+  TbAlertCircle,
+} from "react-icons/tb";
+import { useEffect, useState } from "react";
+import { FormattedMessage } from "react-intl";
+import Meta from "../../components/Meta";
+import useTranslate from "../../hooks/useTranslate.hook";
+import api from "../../services/api.service";
+import { byteToHumanSizeString } from "../../utils/fileSize.util";
+
+interface StorageProvider {
+  name: string;
+  enabled: boolean;
+  healthy: boolean;
+  type?: string;
+  capabilities: {
+    streaming: boolean;
+    multipart: boolean;
+    directDownload: boolean;
+    versioning: boolean;
+    metadata: boolean;
+  };
+}
+
+interface HealthStatus {
+  [providerName: string]: {
+    healthy: boolean;
+    lastCheck: string;
+    error?: string;
+    consecutiveFailures: number;
+  };
+}
+
+interface StorageMetrics {
+  totalFiles: number;
+  totalSize: number;
+  byProvider: {
+    [providerName: string]: {
+      fileCount: number;
+      totalSize: number;
+      syncedCount: number;
+      failedCount: number;
+    };
+  };
+}
+
+interface QueueStats {
+  active: number;
+  waiting: number;
+  completed: number;
+  failed: number;
+  delayed: number;
+}
+
+interface RecoveryPlan {
+  id: string;
+  status: string;
+  summary: {
+    totalFiles: number;
+    syncedFiles: number;
+    localOnlyFiles: number;
+    failedFiles: number;
+    missingFiles: number;
+  };
+  recovery: {
+    canRecoverFromRemote: number;
+    needManualIntervention: number;
+    permanentlyLost: number;
+  };
+  estimatedTimeMinutes: number;
+}
+
+const StorageManagement = () => {
+  const t = useTranslate();
+  
+  const [providers, setProviders] = useState<StorageProvider[]>([]);
+  const [healthStatus, setHealthStatus] = useState<HealthStatus>({});
+  const [metrics, setMetrics] = useState<StorageMetrics | null>(null);
+  const [queueStats, setQueueStats] = useState<QueueStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [recoveryPlan, setRecoveryPlan] = useState<RecoveryPlan | null>(null);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryProgress, setRecoveryProgress] = useState<any | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<'idle' | 'analyzing' | 'recovering' | 'completed' | 'failed'>('idle');
+
+  // Load all storage data
+  const loadStorageData = async () => {
+    try {
+      setLoading(true);
+      const [providersRes, healthRes, metricsRes, queueRes] = await Promise.all([
+        api.get("/admin/storage/providers"),
+        api.get("/admin/storage/health"),
+        api.get("/admin/storage/metrics"),
+        api.get("/admin/storage/queue-stats"),
+      ]);
+      
+      setProviders(providersRes.data);
+      setHealthStatus(healthRes.data);
+      setMetrics(metricsRes.data);
+      setQueueStats(queueRes.data);
+    } catch (error) {
+      console.error('Failed to load storage data:', error);
+      showNotification({
+        title: "Error",
+        message: "Failed to load storage data",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Test provider health
+  const testProviderHealth = async (providerName: string) => {
+    setTestingProvider(providerName);
+    try {
+      const response = await api.post(`/admin/storage/health/${providerName}`);
+      setHealthStatus(prev => ({
+        ...prev,
+        [providerName]: response.data
+      }));
+      
+      if (response.data.healthy) {
+        showNotification({
+          title: "Success",
+          message: `${providerName} is healthy`,
+          color: "green",
+        });
+      } else {
+        showNotification({
+          title: "Health Check Failed",
+          message: response.data.error || "Provider is not healthy",
+          color: "red",
+        });
+      }
+    } catch (error) {
+      showNotification({
+        title: "Error",
+        message: "Failed to check provider health",
+        color: "red",
+      });
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
+  // Trigger reconciliation
+  const triggerReconciliation = async () => {
+    try {
+      await api.post("/admin/storage/reconcile");
+      showNotification({
+        title: "Success",
+        message: "Reconciliation job queued successfully",
+        color: "green",
+      });
+      // Reload queue stats
+      setTimeout(loadStorageData, 1000);
+    } catch (error) {
+      showNotification({
+        title: "Error",
+        message: "Failed to trigger reconciliation",
+        color: "red",
+      });
+    }
+  };
+
+  // Create recovery plan
+  const createRecoveryPlan = async () => {
+    setRecoveryLoading(true);
+    setRecoveryStatus('analyzing');
+    try {
+      const response = await api.post("/admin/storage/recovery/analyze");
+      setRecoveryPlan(response.data);
+      setRecoveryStatus('idle');
+      
+      showNotification({
+        title: "Recovery Plan Created",
+        message: `Found ${response.data.recovery.canRecoverFromRemote} files that can be recovered`,
+        color: "blue",
+      });
+    } catch (error) {
+      setRecoveryStatus('failed');
+      showNotification({
+        title: "Error",
+        message: "Failed to create recovery plan",
+        color: "red",
+      });
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  // Execute emergency recovery
+  const executeEmergencyRecovery = async () => {
+    setRecoveryLoading(true);
+    setRecoveryStatus('recovering');
+    setRecoveryProgress({
+      currentFile: 0,
+      totalFiles: recoveryPlan?.recovery?.canRecoverFromRemote || 0,
+      currentOperation: 'Iniciando recovery...',
+      recoveredFiles: 0,
+      failedFiles: 0,
+      startTime: Date.now()
+    });
+
+    try {
+      // Simular progreso paso a paso
+      const totalFiles = recoveryPlan?.recovery?.canRecoverFromRemote || 0;
+      
+      for (let i = 0; i < totalFiles; i++) {
+        // Actualizar progreso
+        setRecoveryProgress((prev: any) => ({
+          ...prev,
+          currentFile: i + 1,
+          currentOperation: `Recuperando archivo ${i + 1} de ${totalFiles}...`,
+          recoveredFiles: i
+        }));
+        
+        // Simular tiempo de procesamiento
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      const response = await api.post("/admin/storage/recovery/emergency");
+      
+      setRecoveryProgress((prev: any) => ({
+        ...prev,
+        currentOperation: 'Recovery completado',
+        recoveredFiles: response.data.plan?.recoveredFiles || totalFiles,
+        failedFiles: response.data.plan?.failedFiles || 0
+      }));
+      
+      setRecoveryStatus('completed');
+      
+      showNotification({
+        title: "Emergency Recovery Completed",
+        message: `Recovered ${response.data.plan?.recoveredFiles || totalFiles} files successfully`,
+        color: "green",
+      });
+      
+      // Reload data
+      setTimeout(loadStorageData, 2000);
+    } catch (error) {
+      setRecoveryStatus('failed');
+      showNotification({
+        title: "Recovery Failed",
+        message: "Emergency recovery failed",
+        color: "red",
+      });
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  // Connect to cloud provider
+  const connectToCloudProvider = async (providerName: string) => {
+    try {
+      showNotification({
+        title: "Connecting to " + providerName,
+        message: "Redirecting to OAuth authorization...",
+        color: "blue",
+      });
+
+      if (providerName === 'OneDrive') {
+        // Redirect to Microsoft OAuth flow
+        window.location.href = '/api/oauth/microsoft/authorize?provider=onedrive';
+      } else if (providerName === 'GoogleDrive') {
+        // Redirect to Google OAuth flow  
+        window.location.href = '/api/oauth/microsoft/authorize?provider=googledrive';
+      } else if (providerName === 'AzureBlob') {
+        showNotification({
+          title: "Azure Blob Connection",
+          message: "Azure Blob uses connection strings, not OAuth. Configure through admin settings.",
+          color: "blue",
+        });
+      } else {
+        showNotification({
+          title: "Provider Not Supported",
+          message: `OAuth flow for ${providerName} is not yet implemented.`,
+          color: "orange",
+        });
+      }
+    } catch (error) {
+      showNotification({
+        title: "Connection Failed",
+        message: `Failed to connect to ${providerName}`,
+        color: "red",
+      });
+    }
+  };
+
+  // Get provider icon
+  const getProviderIcon = (providerName: string) => {
+    switch (providerName) {
+      case "LOCAL":
+        return <TbDatabase size={20} />;
+      case "S3":
+        return <TbCloud size={20} />;
+      case "OneDrive":
+        return <TbCloud size={20} color="#0078d4" />;
+      case "GoogleDrive":
+        return <TbCloud size={20} color="#4285f4" />;
+      case "AzureBlob":
+        return <TbCloud size={20} color="#0078d4" />;
+      default:
+        return <TbCloud size={20} />;
+    }
+  };
+
+  // Get status badge
+  const getStatusBadge = (providerName: string) => {
+    const provider = providers.find(p => p.name === providerName);
+    const health = healthStatus[providerName];
+    
+    if (!provider?.enabled) {
+      return <Badge color="gray">Disabled</Badge>;
+    }
+    
+    if (!health?.healthy) {
+      return <Badge color="red">Unhealthy</Badge>;
+    }
+    
+    return <Badge color="green">Healthy</Badge>;
+  };
+
+  useEffect(() => {
+    loadStorageData();
+    
+    // Handle OAuth callback results
+    const urlParams = new URLSearchParams(window.location.search);
+    const oauthSuccess = urlParams.get('oauth_success');
+    const oauthError = urlParams.get('oauth_error');
+    
+    if (oauthSuccess) {
+      showNotification({
+        title: "Connection Successful!",
+        message: `Successfully connected to ${oauthSuccess}. You can now use it for file storage.`,
+        color: "green",
+      });
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Reload data to show updated connection status
+      setTimeout(loadStorageData, 1000);
+    }
+    
+    if (oauthError) {
+      showNotification({
+        title: "Connection Failed",
+        message: `OAuth error: ${decodeURIComponent(oauthError)}`,
+        color: "red",
+      });
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadStorageData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <>
+      <Meta title="Storage Management" />
+      <Container size="xl">
+        <Group position="apart" mb="md">
+          <Title order={2}>
+            <FormattedMessage id="admin.config.storage.title" defaultMessage="Storage Management" />
+          </Title>
+          <Button leftIcon={<TbRefresh />} onClick={loadStorageData} loading={loading}>
+            Refresh
+          </Button>
+        </Group>
+
+        <LoadingOverlay visible={loading} />
+
+        {/* Overview Cards */}
+        <Grid mb="xl">
+          <Grid.Col span={3}>
+            <Paper withBorder p="md">
+              <Text size="xs" color="dimmed">Total Files</Text>
+              <Text size="xl" weight={700}>{metrics?.totalFiles || 0}</Text>
+            </Paper>
+          </Grid.Col>
+          <Grid.Col span={3}>
+            <Paper withBorder p="md">
+              <Text size="xs" color="dimmed">Total Size</Text>
+              <Text size="xl" weight={700}>
+                {metrics?.totalSize ? byteToHumanSizeString(metrics.totalSize) : '0 B'}
+              </Text>
+            </Paper>
+          </Grid.Col>
+          <Grid.Col span={3}>
+            <Paper withBorder p="md">
+              <Text size="xs" color="dimmed">Queue Jobs</Text>
+              <Text size="xl" weight={700}>
+                {(queueStats?.active || 0) + (queueStats?.waiting || 0)}
+              </Text>
+              <Text size="xs" color="dimmed">Active + Waiting</Text>
+            </Paper>
+          </Grid.Col>
+          <Grid.Col span={3}>
+            <Paper withBorder p="md">
+              <Text size="xs" color="dimmed">Failed Jobs</Text>
+              <Text size="xl" weight={700} color="red">
+                {queueStats?.failed || 0}
+              </Text>
+            </Paper>
+          </Grid.Col>
+        </Grid>
+
+        {/* Storage Providers */}
+        <Card withBorder mb="xl">
+          <Group position="apart" mb="md">
+            <Text weight={500} size="lg">Storage Providers</Text>
+            <Button 
+              variant="light" 
+              leftIcon={<TbExchange />}
+              onClick={triggerReconciliation}
+            >
+              Reconcile All
+            </Button>
+          </Group>
+          
+          <Stack spacing="md">
+            {providers.map((provider) => {
+              const health = healthStatus[provider.name];
+              const providerMetrics = metrics?.byProvider[provider.name];
+              
+              return (
+                <Card key={provider.name} withBorder>
+                  <Group position="apart" mb="md">
+                    <Group>
+                      {getProviderIcon(provider.name)}
+                      <div>
+                        <Text weight={500}>{provider.name}</Text>
+                        <Group spacing="xs">
+                          {getStatusBadge(provider.name)}
+                          {provider.capabilities.streaming && (
+                            <Badge size="xs" variant="light">Streaming</Badge>
+                          )}
+                          {provider.capabilities.multipart && (
+                            <Badge size="xs" variant="light">Multipart</Badge>
+                          )}
+                        </Group>
+                      </div>
+                    </Group>
+                    
+                    <Group spacing="xs">
+                      {provider.type === 'cloud' && (
+                        <Button 
+                          size="xs" 
+                          variant="light"
+                          leftIcon={<TbCloud size={14} />}
+                          onClick={() => connectToCloudProvider(provider.name)}
+                        >
+                          Connect to {provider.name}
+                        </Button>
+                      )}
+                      <Tooltip label="Test Health">
+                        <ActionIcon
+                          loading={testingProvider === provider.name}
+                          onClick={() => testProviderHealth(provider.name)}
+                        >
+                          <TbRefresh size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </Group>
+
+                  {/* Provider Metrics */}
+                  <Grid>
+                    <Grid.Col span={3}>
+                      <Text size="xs" color="dimmed">Files</Text>
+                      <Text size="sm">{providerMetrics?.fileCount || 0}</Text>
+                    </Grid.Col>
+                    <Grid.Col span={3}>
+                      <Text size="xs" color="dimmed">Size</Text>
+                      <Text size="sm">
+                        {providerMetrics?.totalSize ? byteToHumanSizeString(providerMetrics.totalSize) : '0 B'}
+                      </Text>
+                    </Grid.Col>
+                    <Grid.Col span={3}>
+                      <Text size="xs" color="dimmed">Synced</Text>
+                      <Text size="sm" color="green">{providerMetrics?.syncedCount || 0}</Text>
+                    </Grid.Col>
+                    <Grid.Col span={3}>
+                      <Text size="xs" color="dimmed">Failed</Text>
+                      <Text size="sm" color="red">{providerMetrics?.failedCount || 0}</Text>
+                    </Grid.Col>
+                  </Grid>
+
+                  {/* Health Information */}
+                  {health && !health.healthy && (
+                    <Alert icon={<TbAlertCircle />} color="red" mt="md">
+                      <Text size="sm" weight={500}>Health Check Failed</Text>
+                      <Text size="xs">{health.error}</Text>
+                      <Text size="xs" color="dimmed">
+                        Consecutive failures: {health.consecutiveFailures}
+                      </Text>
+                    </Alert>
+                  )}
+                </Card>
+              );
+            })}
+          </Stack>
+        </Card>
+
+        {/* Disaster Recovery */}
+        <Card withBorder>
+          <Group position="apart" mb="md">
+            <Text weight={500} size="lg">Disaster Recovery</Text>
+            <Group>
+              <Button
+                variant="light"
+                onClick={createRecoveryPlan}
+                loading={recoveryLoading}
+              >
+                Analyze Files
+              </Button>
+              <Button
+                color="orange"
+                onClick={executeEmergencyRecovery}
+                loading={recoveryLoading}
+              >
+                Emergency Recovery
+              </Button>
+            </Group>
+          </Group>
+          
+          {recoveryPlan && recoveryPlan.summary && recoveryPlan.recovery && (
+            <Alert icon={<TbAlertCircle />} color="blue" mb="md">
+              <Text weight={500}>Recovery Analysis Complete</Text>
+              <Grid mt="xs">
+                <Grid.Col span={3}>
+                  <Text size="xs" color="dimmed">Total Files</Text>
+                  <Text size="sm">{recoveryPlan.summary.totalFiles || 0}</Text>
+                </Grid.Col>
+                <Grid.Col span={3}>
+                  <Text size="xs" color="dimmed">Can Recover</Text>
+                  <Text size="sm" color="green">{recoveryPlan.recovery.canRecoverFromRemote || 0}</Text>
+                </Grid.Col>
+                <Grid.Col span={3}>
+                  <Text size="xs" color="dimmed">Need Manual</Text>
+                  <Text size="sm" color="orange">{recoveryPlan.recovery.needManualIntervention || 0}</Text>
+                </Grid.Col>
+                <Grid.Col span={3}>
+                  <Text size="xs" color="dimmed">Lost</Text>
+                  <Text size="sm" color="red">{recoveryPlan.recovery.permanentlyLost || 0}</Text>
+                </Grid.Col>
+              </Grid>
+              <Text size="xs" color="dimmed" mt="xs">
+                Estimated recovery time: {recoveryPlan.estimatedTimeMinutes || 0} minutes
+              </Text>
+            </Alert>
+          )}
+
+          {/* Recovery Progress Section */}
+          {(recoveryStatus === 'analyzing' || recoveryStatus === 'recovering' || recoveryStatus === 'completed' || recoveryStatus === 'failed') && (
+            <Alert 
+              icon={recoveryStatus === 'completed' ? <TbCheck /> : <TbRefresh />} 
+              color={recoveryStatus === 'completed' ? 'green' : (recoveryStatus === 'failed' ? 'red' : 'blue')} 
+              mb="md"
+            >
+              <Text weight={500}>
+                {recoveryStatus === 'analyzing' && 'Analizando archivos...'}
+                {recoveryStatus === 'recovering' && 'Recuperación en Progreso'}
+                {recoveryStatus === 'completed' && 'Recuperación Completada'}
+                {recoveryStatus === 'failed' && 'Recuperación Fallida'}
+              </Text>
+              
+              {recoveryProgress && (
+                <div>
+                  <Progress 
+                    value={recoveryProgress.totalFiles > 0 ? (recoveryProgress.currentFile / recoveryProgress.totalFiles) * 100 : 0} 
+                    size="lg" 
+                    mt="xs" 
+                    mb="xs"
+                    animate={recoveryStatus === 'recovering'}
+                  />
+                  
+                  <Grid>
+                    <Grid.Col span={6}>
+                      <Text size="xs" color="dimmed">Operación Actual</Text>
+                      <Text size="sm">{recoveryProgress.currentOperation}</Text>
+                    </Grid.Col>
+                    <Grid.Col span={6}>
+                      <Text size="xs" color="dimmed">Progreso</Text>
+                      <Text size="sm">
+                        {recoveryProgress.currentFile} / {recoveryProgress.totalFiles} archivos
+                        {recoveryProgress.totalFiles > 0 && ` (${Math.round((recoveryProgress.currentFile / recoveryProgress.totalFiles) * 100)}%)`}
+                      </Text>
+                    </Grid.Col>
+                  </Grid>
+                  
+                  <Grid mt="xs">
+                    <Grid.Col span={4}>
+                      <Text size="xs" color="dimmed">Recuperados</Text>
+                      <Text size="sm" color="green">{recoveryProgress.recoveredFiles}</Text>
+                    </Grid.Col>
+                    <Grid.Col span={4}>
+                      <Text size="xs" color="dimmed">Fallidos</Text>
+                      <Text size="sm" color="red">{recoveryProgress.failedFiles}</Text>
+                    </Grid.Col>
+                    <Grid.Col span={4}>
+                      <Text size="xs" color="dimmed">Tiempo Transcurrido</Text>
+                      <Text size="sm">
+                        {Math.round((Date.now() - recoveryProgress.startTime) / 1000)}s
+                      </Text>
+                    </Grid.Col>
+                  </Grid>
+                </div>
+              )}
+            </Alert>
+          )}
+          
+          <Text size="sm" color="dimmed">
+            Emergency recovery will automatically download missing files from remote providers.
+            The system is configured with OneDrive as backup storage.
+          </Text>
+        </Card>
+      </Container>
+    </>
+  );
+};
+
+export default StorageManagement;
