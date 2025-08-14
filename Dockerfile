@@ -2,7 +2,7 @@
 FROM node:22-alpine AS frontend-dependencies
 WORKDIR /opt/app
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Stage 2: Build frontend
 FROM node:22-alpine AS frontend-builder
@@ -20,7 +20,7 @@ FROM node:22-alpine AS backend-dependencies
 RUN apk add --no-cache python3
 WORKDIR /opt/app
 COPY backend/package.json backend/package-lock.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Stage 4: Build backend
 FROM node:22-alpine AS backend-builder
@@ -31,6 +31,7 @@ COPY ./backend .
 COPY --from=backend-dependencies /opt/app/node_modules ./node_modules
 RUN npx prisma generate
 RUN npm run build && npm prune --production
+RUN npm install --os=linux --libc=musl --cpu=x64 sharp
 
 # Stage 5: Final image
 FROM node:22-alpine AS runner
