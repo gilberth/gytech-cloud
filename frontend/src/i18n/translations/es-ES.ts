@@ -485,7 +485,6 @@ export default {
   "admin.config.category.googledrive": "Google Drive",
   "admin.config.category.azure": "Azure",
   "admin.config.category.azureblob": "Azure Blob",
-  "admin.config.storage.title": "Gestión de Almacenamiento",
   "admin.config.s3.enabled": "Habilitado",
   "admin.config.s3.enabled.description": "Si se debería utilizar S3 en lugar del sistema de archivos local para almacenar los archivos compartidos.",
   "admin.config.s3.endpoint": "Punto de acceso/endpoint",

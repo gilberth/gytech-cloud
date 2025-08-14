@@ -18,9 +18,13 @@ const units = (
 ).map((unit) => ({ label: unit, value: unit }));
 
 function getLargestApplicableUnit(value: number) {
-  return (
-    units.findLast((unit) => value % multipliers[unit.value] === 0) || units[0]
-  );
+  // Find the last unit that divides evenly into the value
+  for (let i = units.length - 1; i >= 0; i--) {
+    if (value % multipliers[units[i].value] === 0) {
+      return units[i];
+    }
+  }
+  return units[0];
 }
 
 const FileSizeInput = ({
