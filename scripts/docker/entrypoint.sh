@@ -5,7 +5,7 @@ cp -rn /tmp/img/* /opt/app/frontend/public/img
 
 # Start the backend server first
 echo "Starting backend server..."
-cd backend && npm run prod &
+cd backend && npm run start:prod &
 BACKEND_PID=$!
 cd ..
 
