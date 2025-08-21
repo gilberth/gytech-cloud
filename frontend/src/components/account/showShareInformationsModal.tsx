@@ -10,6 +10,44 @@ import { byteToHumanSizeString } from "../../utils/fileSize.util";
 import toast from "../../utils/toast.util";
 
 // Helper functions for file handling
+const truncateFileName = (fileName: string, maxLength: number = 40) => {
+  if (fileName.length <= maxLength) return fileName;
+  
+  const extension = fileName.split('.').pop() || '';
+  const nameWithoutExt = fileName.slice(0, fileName.lastIndexOf('.'));
+  const extensionLength = extension.length + 1; // +1 for the dot
+  
+  if (extensionLength >= maxLength - 3) {
+    // If extension is too long, just truncate the whole string
+    return fileName.slice(0, maxLength - 3) + '...';
+  }
+  
+  const maxNameLength = maxLength - extensionLength - 3; // -3 for '...'
+  return nameWithoutExt.slice(0, maxNameLength) + '...' + '.' + extension;
+};
+
+const truncateUrl = (url: string, maxLength: number = 60) => {
+  if (url.length <= maxLength) return url;
+  
+  // Extract the important parts
+  const urlParts = url.split('/');
+  const protocol = urlParts[0] + '//' + urlParts[2]; // http://localhost:3000
+  const fileName = urlParts[urlParts.length - 1]; // The encoded filename
+  
+  // If the filename itself is very long, truncate it
+  const decodedFileName = decodeURIComponent(fileName);
+  const truncatedFileName = truncateFileName(decodedFileName, 20);
+  const encodedTruncatedFileName = encodeURIComponent(truncatedFileName);
+  
+  // Create a shortened version
+  const baseUrl = protocol + '/api/shares/[ID]/files/[FILE]';
+  const displayUrl = baseUrl.replace('[FILE]', encodedTruncatedFileName);
+  
+  if (displayUrl.length <= maxLength) return displayUrl;
+  
+  // If still too long, truncate more aggressively
+  return url.slice(0, maxLength - 3) + '...';
+};
 const getFileIcon = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   
@@ -94,9 +132,11 @@ const showShareInformationsModal = (
                       {getFileIcon(share.files[0].name)}
                     </Box>
                   )}
-                  <Text size="sm" weight={500} align="center">
-                    {share.files[0].name}
-                  </Text>
+                  <Tooltip label={share.files[0].name} position="bottom" multiline maw={400}>
+                    <Text size="sm" weight={500} align="center" sx={{ cursor: 'help' }}>
+                      {truncateFileName(share.files[0].name, 45)}
+                    </Text>
+                  </Tooltip>
                 </Stack>
               ) : (
                 // Multiple files preview
@@ -121,9 +161,11 @@ const showShareInformationsModal = (
                             {getFileIcon(file.name)}
                           </Box>
                         )}
-                        <Text size="xs" align="center" sx={{ maxWidth: 80 }} truncate>
-                          {file.name}
-                        </Text>
+                        <Tooltip label={file.name} position="bottom" openDelay={300}>
+                          <Text size="xs" align="center" sx={{ maxWidth: 80, cursor: 'help' }} truncate>
+                            {file.name}
+                          </Text>
+                        </Tooltip>
                       </Stack>
                     ))}
                     {share.files.length > 4 && (
@@ -139,20 +181,33 @@ const showShareInformationsModal = (
         )}
         
         {/* File Names Section */}
-        <Text size="sm">
-          <b>
-            Archivo(s):{" "}
-          </b>
-          {fileNames.length > 0 ? (
-            fileNames.length === 1 ? (
-              fileNames[0]
+        <Box>
+          <Text size="sm">
+            <b>Archivo(s): </b>
+            {fileNames.length > 0 ? (
+              fileNames.length === 1 ? (
+                <Tooltip label={fileNames[0]} position="top" multiline maw={400} disabled={fileNames[0].length <= 50}>
+                  <Text component="span" sx={{ cursor: fileNames[0].length > 50 ? 'help' : 'default' }}>
+                    {truncateFileName(fileNames[0], 50)}
+                  </Text>
+                </Tooltip>
+              ) : (
+                <Tooltip 
+                  label={fileNames.join(', ')} 
+                  position="top" 
+                  multiline 
+                  maw={400}
+                >
+                  <Text component="span" sx={{ cursor: 'help' }}>
+                    {truncateFileName(fileNames[0], 30)} y {fileNames.length - 1} archivo(s) más
+                  </Text>
+                </Tooltip>
+              )
             ) : (
-              `${fileNames[0]} y ${fileNames.length - 1} archivo(s) más`
-            )
-          ) : (
-            share.name || "Sin nombre"
-          )}
-        </Text>
+              share.name || "Sin nombre"
+            )}
+          </Text>
+        </Box>
         
         <Text size="sm">
           <b>
@@ -197,6 +252,13 @@ const showShareInformationsModal = (
               }
             }}
             rightSectionWidth={62}
+            styles={{
+              input: {
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }
+            }}
             rightSection={
               <>
                 <Tooltip label="Abrir enlace" position="top" offset={-2} openDelay={200}>
@@ -221,39 +283,50 @@ const showShareInformationsModal = (
           {/* Direct download URLs for files */}
           {share.files && share.files.length > 0 && share.files.map((file: any, index: number) => {
             const directDownloadUrl = `${window.location.origin}/api/shares/${share.id}/files/${file.id}/${encodeURIComponent(file.name)}`;
+            const displayUrl = truncateUrl(directDownloadUrl, 55);
             return (
-              <TextInput
-                key={file.id}
-                readOnly
-                variant="filled"
-                value={directDownloadUrl}
-                onClick={() => {
-                  if (window.isSecureContext) {
-                    navigator.clipboard.writeText(directDownloadUrl);
-                    toast.success("Enlace copiado");
-                  }
-                }}
-                rightSectionWidth={62}
-                rightSection={
-                  <>
-                    <Tooltip label="Abrir enlace" position="top" offset={-2} openDelay={200}>
-                      <ActionIcon component="a" href={directDownloadUrl} target="_blank">
-                        <TbExternalLink size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                    {window.isSecureContext && (
-                      <Tooltip label="Copiar enlace" position="top" offset={-2} openDelay={200}>
-                        <ActionIcon onClick={() => {
-                          navigator.clipboard.writeText(directDownloadUrl);
-                          toast.success("Enlace copiado");
-                        }}>
-                          <TbCopy size={16} />
-                        </ActionIcon>
-                      </Tooltip>
-                    )}
-                  </>
-                }
-              />
+              <Box key={file.id}>
+                <Tooltip label={`Enlace directo: ${file.name}`} position="top" multiline maw={400}>
+                  <TextInput
+                    readOnly
+                    variant="filled"
+                    value={displayUrl}
+                    onClick={() => {
+                      if (window.isSecureContext) {
+                        navigator.clipboard.writeText(directDownloadUrl);
+                        toast.success("Enlace copiado");
+                      }
+                    }}
+                    rightSectionWidth={62}
+                    styles={{
+                      input: {
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }
+                    }}
+                    rightSection={
+                      <>
+                        <Tooltip label="Abrir enlace" position="top" offset={-2} openDelay={200}>
+                          <ActionIcon component="a" href={directDownloadUrl} target="_blank">
+                            <TbExternalLink size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                        {window.isSecureContext && (
+                          <Tooltip label="Copiar enlace" position="top" offset={-2} openDelay={200}>
+                            <ActionIcon onClick={() => {
+                              navigator.clipboard.writeText(directDownloadUrl);
+                              toast.success("Enlace copiado");
+                            }}>
+                              <TbCopy size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+                      </>
+                    }
+                  />
+                </Tooltip>
+              </Box>
             );
           })}
         </Stack>
@@ -295,9 +368,11 @@ const showShareInformationsModal = (
               {share.files.map((file: any, index: number) => (
                 <Group key={file.id} spacing="xs">
                   {getFileIcon(file.name)}
-                  <Text size="xs">
-                    {index + 1}. {file.name}
-                  </Text>
+                  <Tooltip label={file.name} position="top" openDelay={300}>
+                    <Text size="xs" sx={{ cursor: 'help' }}>
+                      {index + 1}. {truncateFileName(file.name, 40)}
+                    </Text>
+                  </Tooltip>
                 </Group>
               ))}
             </Stack>
