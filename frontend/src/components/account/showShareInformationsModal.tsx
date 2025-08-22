@@ -132,8 +132,32 @@ const showShareInformationsModal = (
                       {getFileIcon(share.files[0].name)}
                     </Box>
                   )}
-                  <Tooltip label={share.files[0].name} position="bottom" multiline maw={400}>
-                    <Text size="sm" weight={500} align="center" sx={{ cursor: 'help' }}>
+                  <Tooltip 
+                    label={share.files[0].name} 
+                    position="bottom" 
+                    multiline 
+                    maw={400}
+                    styles={{
+                      tooltip: {
+                        textAlign: 'center',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'normal'
+                      }
+                    }}
+                  >
+                    <Text 
+                      size="sm" 
+                      weight={500} 
+                      align="center" 
+                      sx={{ 
+                        cursor: 'help',
+                        textAlign: 'center',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'normal',
+                        lineHeight: 1.3,
+                        maxWidth: '100%'
+                      }}
+                    >
                       {truncateFileName(share.files[0].name, 45)}
                     </Text>
                   </Tooltip>
@@ -161,7 +185,20 @@ const showShareInformationsModal = (
                             {getFileIcon(file.name)}
                           </Box>
                         )}
-                        <Tooltip label={file.name} position="bottom" openDelay={300}>
+                        <Tooltip 
+                          label={file.name} 
+                          position="bottom" 
+                          openDelay={300}
+                          multiline
+                          maw={400}
+                          styles={{
+                            tooltip: {
+                              textAlign: 'center',
+                              wordBreak: 'break-word',
+                              whiteSpace: 'normal'
+                            }
+                          }}
+                        >
                           <Text size="xs" align="center" sx={{ maxWidth: 80, cursor: 'help' }} truncate>
                             {file.name}
                           </Text>
@@ -186,7 +223,20 @@ const showShareInformationsModal = (
             <b>Archivo(s): </b>
             {fileNames.length > 0 ? (
               fileNames.length === 1 ? (
-                <Tooltip label={fileNames[0]} position="top" multiline maw={400} disabled={fileNames[0].length <= 50}>
+                <Tooltip 
+                  label={fileNames[0]} 
+                  position="top" 
+                  multiline 
+                  maw={400} 
+                  disabled={fileNames[0].length <= 50}
+                  styles={{
+                    tooltip: {
+                      textAlign: 'center',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal'
+                    }
+                  }}
+                >
                   <Text component="span" sx={{ cursor: fileNames[0].length > 50 ? 'help' : 'default' }}>
                     {truncateFileName(fileNames[0], 50)}
                   </Text>
@@ -197,6 +247,13 @@ const showShareInformationsModal = (
                   position="top" 
                   multiline 
                   maw={400}
+                  styles={{
+                    tooltip: {
+                      textAlign: 'center',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal'
+                    }
+                  }}
                 >
                   <Text component="span" sx={{ cursor: 'help' }}>
                     {truncateFileName(fileNames[0], 30)} y {fileNames.length - 1} archivo(s) más
@@ -286,7 +343,19 @@ const showShareInformationsModal = (
             const displayUrl = truncateUrl(directDownloadUrl, 55);
             return (
               <Box key={file.id}>
-                <Tooltip label={`Enlace directo: ${file.name}`} position="top" multiline maw={400}>
+                <Tooltip 
+                  label={`Enlace directo: ${file.name}`} 
+                  position="top" 
+                  multiline 
+                  maw={400}
+                  styles={{
+                    tooltip: {
+                      textAlign: 'center',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal'
+                    }
+                  }}
+                >
                   <TextInput
                     readOnly
                     variant="filled"
@@ -368,7 +437,20 @@ const showShareInformationsModal = (
               {share.files.map((file: any, index: number) => (
                 <Group key={file.id} spacing="xs">
                   {getFileIcon(file.name)}
-                  <Tooltip label={file.name} position="top" openDelay={300}>
+                  <Tooltip 
+                    label={file.name} 
+                    position="top" 
+                    openDelay={300}
+                    multiline
+                    maw={400}
+                    styles={{
+                      tooltip: {
+                        textAlign: 'center',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'normal'
+                      }
+                    }}
+                  >
                     <Text size="xs" sx={{ cursor: 'help' }}>
                       {index + 1}. {truncateFileName(file.name, 40)}
                     </Text>
