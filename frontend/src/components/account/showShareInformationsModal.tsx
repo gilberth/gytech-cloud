@@ -133,7 +133,7 @@ const showShareInformationsModal = (
                     </Box>
                   )}
                   <Tooltip label={share.files[0].name} position="bottom" multiline maw={400}>
-                    <Text size="sm" weight={500} align="center" sx={{ cursor: 'help' }}>
+                    <Text size="sm" weight={500} align="center" sx={{ cursor: 'help', textAlign: 'center', width: '100%' }}>
                       {truncateFileName(share.files[0].name, 45)}
                     </Text>
                   </Tooltip>
