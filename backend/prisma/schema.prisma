@@ -96,6 +96,11 @@ model Share {
   recipients ShareRecipient[]
   files      File[]
   storageProvider String @default("LOCAL")
+  
+  @@index([creatorId])
+  @@index([expiration])
+  @@index([uploadLocked])
+  @@index([reverseShareId])
 }
 
 model ReverseShare {

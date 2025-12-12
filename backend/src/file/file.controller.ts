@@ -76,8 +76,6 @@ export class FileController {
     @Param("fileId") fileId: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    console.log(`[DEBUG] Metadata request for share: ${shareId}, file: ${fileId}`);
-    
     // Custom lightweight security check for metadata endpoint
     // This allows public shares to get metadata without JWT requirement
     const share = await this.prisma.share.findUnique({
@@ -86,15 +84,11 @@ export class FileController {
     });
 
     if (!share) {
-      console.log(`[DEBUG] Share not found: ${shareId}`);
       throw new NotFoundException("Share not found");
     }
 
-    console.log(`[DEBUG] Share found: ${share.id}, expired: ${moment().isAfter(share.expiration)}`);
-
     // Check if share is expired
     if (moment().isAfter(share.expiration) && !moment(share.expiration).isSame(0)) {
-      console.log(`[DEBUG] Share expired: ${shareId}`);
       throw new NotFoundException("Share expired");
     }
 
@@ -104,7 +98,7 @@ export class FileController {
     const file = await this.fileService.get(shareId, fileId);
     const mimeType = mime?.lookup?.(file.metaData.name) || "application/octet-stream";
     
-    const result = {
+    return {
       id: fileId,
       name: file.metaData.name,
       size: file.metaData.size,
@@ -112,9 +106,6 @@ export class FileController {
       supportsPreview: this.supportsPreview(mimeType, file.metaData.name),
       previewType: this.getPreviewType(mimeType, file.metaData.name),
     };
-    
-    console.log(`[DEBUG] Returning metadata:`, result);
-    return result;
   }
 
   @Get(":fileId/:filename")
