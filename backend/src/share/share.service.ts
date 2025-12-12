@@ -6,10 +6,11 @@ import {
 } from "@nestjs/common";
 import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { Share, User } from "@prisma/client";
-import * as archiver from "archiver";
 import * as argon from "argon2";
 import * as fs from "fs";
 import * as moment from "moment";
+import * as path from "path";
+import { Worker } from "worker_threads";
 import { ClamScanService } from "src/clamscan/clamscan.service";
 import { ConfigService } from "src/config/config.service";
 import { EmailService } from "src/email/email.service";
@@ -32,7 +33,7 @@ export class ShareService {
     private jwtService: JwtService,
     private reverseShareService: ReverseShareService,
     private clamScanService: ClamScanService,
-  ) {}
+  ) { }
 
   async create(share: CreateShareDTO, user?: User, reverseShareToken?: string) {
     if (!(await this.isShareIdAvailable(share.id)).isAvailable)
@@ -62,7 +63,7 @@ export class ShareService {
         maxExpiration.value !== 0 &&
         (expiresNever ||
           parsedExpiration >
-            moment().add(maxExpiration.value, maxExpiration.unit).toDate())
+          moment().add(maxExpiration.value, maxExpiration.unit).toDate())
       ) {
         throw new BadRequestException(
           "Expiration date exceeds maximum expiration date",
@@ -109,22 +110,36 @@ export class ShareService {
   async createZip(shareId: string) {
     if (this.config.get("s3.enabled")) return;
 
-    const path = `${SHARE_DIRECTORY}/${shareId}`;
-
     const files = await this.prisma.file.findMany({ where: { shareId } });
-    const archive = archiver("zip", {
-      zlib: { level: this.config.get("share.zipCompressionLevel") },
-    });
-    const writeStream = fs.createWriteStream(`${path}/archive.zip`);
 
-    for (const file of files) {
-      archive.append(fs.createReadStream(`${path}/${file.id}`), {
-        name: file.name,
+    return new Promise((resolve, reject) => {
+      const isTs = __filename.endsWith(".ts");
+      const workerFileName = isTs ? "zip.worker.ts" : "zip.worker.js";
+      const workerPath = path.join(__dirname, workerFileName);
+
+      const worker = new Worker(workerPath, {
+        workerData: {
+          shareId,
+          files,
+          shareDirectory: SHARE_DIRECTORY,
+          compressionLevel: this.config.get("share.zipCompressionLevel"),
+        },
+        execArgv: isTs ? ["-r", "ts-node/register"] : undefined,
       });
-    }
 
-    archive.pipe(writeStream);
-    await archive.finalize();
+      worker.on("message", (message) => {
+        if (typeof message === "object" && message.error) {
+          reject(new Error(message.error));
+        } else {
+          resolve(message);
+        }
+      });
+      worker.on("error", reject);
+      worker.on("exit", (code) => {
+        if (code !== 0)
+          reject(new Error(`Worker stopped with exit code ${code}`));
+      });
+    });
   }
 
   async complete(id: string, reverseShareToken?: string) {
@@ -165,7 +180,7 @@ export class ShareService {
 
     const notifyReverseShareCreator = share.reverseShare
       ? this.config.get("smtp.enabled") &&
-        share.reverseShare.sendEmailNotification
+      share.reverseShare.sendEmailNotification
       : undefined;
 
     if (notifyReverseShareCreator) {
@@ -323,7 +338,7 @@ export class ShareService {
     // Handle security updates
     if (updateData.security) {
       hasSecurityUpdates = true;
-      
+
       if (updateData.security.password) {
         updateSecurity.password = await argon.hash(updateData.security.password);
       }
@@ -341,11 +356,11 @@ export class ShareService {
         ...(hasSecurityUpdates && {
           security: existingShare.security
             ? {
-                update: updateSecurity,
-              }
+              update: updateSecurity,
+            }
             : {
-                create: updateSecurity,
-              },
+              create: updateSecurity,
+            },
         }),
       },
     });

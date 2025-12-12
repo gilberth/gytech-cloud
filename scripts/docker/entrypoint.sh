@@ -11,8 +11,14 @@ cd ..
 
 # Wait for backend to be ready
 echo "Waiting for backend to be ready..."
-timeout=60
+timeout=300
 while [ $timeout -gt 0 ]; do
+  # Check if backend process is still running
+  if ! kill -0 $BACKEND_PID 2>/dev/null; then
+    echo "ERROR: Backend process died while waiting for it to be ready"
+    exit 1
+  fi
+
   if curl -sf http://localhost:8080/api/health > /dev/null 2>&1; then
     echo "Backend is ready!"
     break
@@ -23,7 +29,7 @@ while [ $timeout -gt 0 ]; do
 done
 
 if [ $timeout -le 0 ]; then
-  echo "Backend failed to start within 60 seconds"
+  echo "Backend failed to start within 300 seconds"
   exit 1
 fi
 
