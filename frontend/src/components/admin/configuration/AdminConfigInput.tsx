@@ -1,4 +1,5 @@
 import {
+  ColorInput,
   NumberInput,
   PasswordInput,
   Stack,

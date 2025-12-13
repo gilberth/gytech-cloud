@@ -33,6 +33,49 @@ import i18nUtil from "../utils/i18n.util";
 import userPreferences from "../utils/userPreferences.util";
 import Footer from "../components/footer/Footer";
 
+// Helper functions for color palette generation
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+}
+
+function tint(hex: string, factor: number) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const r = Math.round(rgb.r + (255 - rgb.r) * factor);
+  const g = Math.round(rgb.g + (255 - rgb.g) * factor);
+  const b = Math.round(rgb.b + (255 - rgb.b) * factor);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function shade(hex: string, factor: number) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  const r = Math.round(rgb.r * (1 - factor));
+  const g = Math.round(rgb.g * (1 - factor));
+  const b = Math.round(rgb.b * (1 - factor));
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+const generatePalette = (color: string) => {
+  return [
+    tint(color, 0.9),
+    tint(color, 0.8),
+    tint(color, 0.6),
+    tint(color, 0.4),
+    tint(color, 0.2),
+    color,
+    shade(color, 0.1),
+    shade(color, 0.2),
+    shade(color, 0.3),
+    shade(color, 0.4),
+  ] as [string, string, string, string, string, string, string, string, string, string];
+};
+
 const excludeDefaultLayoutRoutes = ["/admin/config/[category]"];
 
 function App({ Component, pageProps }: AppProps) {
@@ -47,6 +90,29 @@ function App({ Component, pageProps }: AppProps) {
   const [configVariables, setConfigVariables] = useState<Config[]>(
     pageProps.configVariables,
   );
+
+  const [customTheme, setCustomTheme] = useState<any>({ colorScheme, ...globalStyle });
+
+  useEffect(() => {
+    let newTheme = { ...globalStyle, colorScheme };
+
+    const primaryColorConfig = configVariables?.find(
+      (c) => c.key === "general.primaryColor"
+    );
+
+    if (primaryColorConfig && primaryColorConfig.value && /^#[0-9A-F]{6}$/i.test(primaryColorConfig.value)) {
+      const palette = generatePalette(primaryColorConfig.value);
+      newTheme = {
+        ...newTheme,
+        colors: {
+          ...newTheme.colors,
+          brand: palette,
+        },
+        primaryColor: "brand",
+      };
+    }
+    setCustomTheme(newTheme);
+  }, [configVariables, colorScheme]);
 
   useEffect(() => {
     setRoute(router.pathname);

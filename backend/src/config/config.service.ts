@@ -104,7 +104,7 @@ export class ConfigService extends EventEmitter {
     if (configVariable.type == "number" || configVariable.type == "filesize")
       return parseInt(value);
     if (configVariable.type == "boolean") return value == "true";
-    if (configVariable.type == "string" || configVariable.type == "text")
+    if (configVariable.type == "string" || configVariable.type == "text" || configVariable.type == "color")
       return value;
     if (configVariable.type == "timespan") return stringToTimespan(value);
   }
@@ -175,7 +175,8 @@ export class ConfigService extends EventEmitter {
       typeof value != configVariable.type &&
       typeof value == "string" &&
       configVariable.type != "text" &&
-      configVariable.type != "timespan"
+      configVariable.type != "timespan" &&
+      configVariable.type != "color"
     ) {
       throw new BadRequestException(
         `Config variable must be of type ${configVariable.type}`,

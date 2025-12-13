@@ -34,6 +34,11 @@ export const configVariables = {
       defaultValue: "3 months",
       secret: false,
     },
+    primaryColor: {
+      type: "color",
+      defaultValue: "#228be6", // Mantine blue default
+      secret: false,
+    },
   },
   share: {
     allowRegistration: {
@@ -76,7 +81,7 @@ export const configVariables = {
       secret: false,
     },
     autoUploadFiles: {
-      type: "boolean", 
+      type: "boolean",
       defaultValue: "true",
       secret: false,
     },
@@ -476,7 +481,7 @@ async function migrateConfigVariables() {
   for (const existingConfigVariable of existingConfigVariables) {
     const configVariable =
       configVariables[existingConfigVariable.category]?.[
-        existingConfigVariable.name
+      existingConfigVariable.name
       ];
 
     // Delete the config variable if it doesn't exist in the seed
