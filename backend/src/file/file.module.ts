@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { ReverseShareModule } from "src/reverseShare/reverseShare.module";
 import { ShareModule } from "src/share/share.module";
+import { PublicFileController } from "./public-file.controller";
 import { FileController } from "./file.controller";
 import { FileService } from "./file.service";
 import { LocalFileService } from "./local.service";
@@ -9,8 +10,8 @@ import { S3FileService } from "./s3.service";
 
 @Module({
   imports: [JwtModule.register({}), ReverseShareModule, ShareModule],
-  controllers: [FileController],
+  controllers: [FileController, PublicFileController],
   providers: [FileService, LocalFileService, S3FileService],
   exports: [FileService],
 })
-export class FileModule {}
+export class FileModule { }

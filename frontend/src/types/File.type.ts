@@ -6,6 +6,7 @@ export type FileMetaData = {
   id: string;
   name: string;
   size: string;
+  publicToken?: string;
 };
 
 export type FileListItem = FileUpload | (FileMetaData & { deleted?: boolean });

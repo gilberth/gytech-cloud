@@ -65,9 +65,9 @@ const FileList = ({
   };
 
   const copyFileLink = (file: FileMetaData) => {
-    const link = `${window.location.origin}/api/shares/${
-      share.id
-    }/files/${file.id}`;
+    const link = file.publicToken
+      ? `${window.location.origin}/api/f/${file.publicToken}`
+      : `${window.location.origin}/api/shares/${share.id}/files/${file.id}`;
 
     if (window.isSecureContext) {
       clipboard.copy(link);
@@ -110,41 +110,41 @@ const FileList = ({
           {isLoading
             ? skeletonRows
             : files!.map((file) => (
-                <tr key={file.name}>
-                  <td>{file.name}</td>
-                  <td>{byteToHumanSizeString(parseInt(file.size))}</td>
-                  <td>
-                    <Group position="right">
-                      {shareService.doesFileSupportPreview(file.name) && (
-                        <ActionIcon
-                          onClick={() =>
-                            showFilePreviewModal(share.id, file, modals)
-                          }
-                          size={25}
-                        >
-                          <TbEye />
-                        </ActionIcon>
-                      )}
-                      {!share.hasPassword && (
-                        <ActionIcon
-                          size={25}
-                          onClick={() => copyFileLink(file)}
-                        >
-                          <TbLink />
-                        </ActionIcon>
-                      )}
+              <tr key={file.name}>
+                <td>{file.name}</td>
+                <td>{byteToHumanSizeString(parseInt(file.size))}</td>
+                <td>
+                  <Group position="right">
+                    {shareService.doesFileSupportPreview(file.name) && (
+                      <ActionIcon
+                        onClick={() =>
+                          showFilePreviewModal(share.id, file, modals)
+                        }
+                        size={25}
+                      >
+                        <TbEye />
+                      </ActionIcon>
+                    )}
+                    {!share.hasPassword && (
                       <ActionIcon
                         size={25}
-                        onClick={async () => {
-                          await shareService.downloadFile(share.id, file.id);
-                        }}
+                        onClick={() => copyFileLink(file)}
                       >
-                        <TbDownload />
+                        <TbLink />
                       </ActionIcon>
-                    </Group>
-                  </td>
-                </tr>
-              ))}
+                    )}
+                    <ActionIcon
+                      size={25}
+                      onClick={async () => {
+                        await shareService.downloadFile(share.id, file.id);
+                      }}
+                    >
+                      <TbDownload />
+                    </ActionIcon>
+                  </Group>
+                </td>
+              </tr>
+            ))}
         </tbody>
       </Table>
     </Box>

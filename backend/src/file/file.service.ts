@@ -1,3 +1,4 @@
+import * as moment from "moment";
 import { Injectable } from "@nestjs/common";
 import { LocalFileService } from "./local.service";
 import { S3FileService } from "./s3.service";
@@ -12,7 +13,7 @@ export class FileService {
     private localFileService: LocalFileService,
     private s3FileService: S3FileService,
     private configService: ConfigService,
-  ) {}
+  ) { }
 
   // Determine which service to use based on the current config value
   // shareId is optional -> can be used to overwrite a storage provider
@@ -47,6 +48,22 @@ export class FileService {
     });
     const storageService = this.getStorageService(share.storageProvider);
     return storageService.get(shareId, fileId);
+  }
+
+  async getByPublicToken(token: string): Promise<File> {
+    const file = await this.prisma.file.findUnique({
+      where: { publicToken: token },
+      include: { share: true },
+    });
+
+    if (!file) throw new Error("File not found");
+
+    if (moment().isAfter(file.share.expiration) && !moment(file.share.expiration).isSame(0)) {
+      throw new Error("Share expired");
+    }
+
+    const storageService = this.getStorageService(file.share.storageProvider);
+    return storageService.get(file.shareId, file.id);
   }
 
   async remove(shareId: string, fileId: string) {

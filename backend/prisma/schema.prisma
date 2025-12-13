@@ -133,6 +133,8 @@ model File {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
 
+  publicToken String @unique @default(uuid())
+  
   name String
   size String
 

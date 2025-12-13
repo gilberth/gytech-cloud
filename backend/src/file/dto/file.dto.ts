@@ -6,6 +6,9 @@ export class FileDTO {
   id: string;
 
   @Expose()
+  publicToken: string;
+
+  @Expose()
   name: string;
 
   @Expose()
