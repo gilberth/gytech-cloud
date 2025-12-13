@@ -12,45 +12,45 @@ import toast from "../../utils/toast.util";
 // Helper functions for file handling
 const truncateFileName = (fileName: string, maxLength: number = 40) => {
   if (fileName.length <= maxLength) return fileName;
-  
+
   const extension = fileName.split('.').pop() || '';
   const nameWithoutExt = fileName.slice(0, fileName.lastIndexOf('.'));
   const extensionLength = extension.length + 1; // +1 for the dot
-  
+
   if (extensionLength >= maxLength - 3) {
     // If extension is too long, just truncate the whole string
     return fileName.slice(0, maxLength - 3) + '...';
   }
-  
+
   const maxNameLength = maxLength - extensionLength - 3; // -3 for '...'
   return nameWithoutExt.slice(0, maxNameLength) + '...' + '.' + extension;
 };
 
 const truncateUrl = (url: string, maxLength: number = 60) => {
   if (url.length <= maxLength) return url;
-  
+
   // Extract the important parts
   const urlParts = url.split('/');
   const protocol = urlParts[0] + '//' + urlParts[2]; // http://localhost:3000
   const fileName = urlParts[urlParts.length - 1]; // The encoded filename
-  
+
   // If the filename itself is very long, truncate it
   const decodedFileName = decodeURIComponent(fileName);
   const truncatedFileName = truncateFileName(decodedFileName, 20);
   const encodedTruncatedFileName = encodeURIComponent(truncatedFileName);
-  
+
   // Create a shortened version
   const baseUrl = protocol + '/api/shares/[ID]/files/[FILE]';
   const displayUrl = baseUrl.replace('[FILE]', encodedTruncatedFileName);
-  
+
   if (displayUrl.length <= maxLength) return displayUrl;
-  
+
   // If still too long, truncate more aggressively
   return url.slice(0, maxLength - 3) + '...';
 };
 const getFileIcon = (fileName: string) => {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
-  
+
   if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
     return <TbPhoto size={20} color="#4CAF50" />;
   } else if (['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv'].includes(ext)) {
@@ -106,7 +106,7 @@ const showShareInformationsModal = (
             <Text size="sm" weight={500} mb="xs">
               Vista previa
             </Text>
-            <Box 
+            <Box
               sx={(theme) => ({
                 border: `1px solid ${theme.colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[3]}`,
                 borderRadius: theme.radius.md,
@@ -132,10 +132,10 @@ const showShareInformationsModal = (
                       {getFileIcon(share.files[0].name)}
                     </Box>
                   )}
-                  <Tooltip 
-                    label={share.files[0].name} 
-                    position="bottom" 
-                    multiline 
+                  <Tooltip
+                    label={share.files[0].name}
+                    position="bottom"
+                    multiline
                     maw={400}
                     styles={{
                       tooltip: {
@@ -145,11 +145,11 @@ const showShareInformationsModal = (
                       }
                     }}
                   >
-                    <Text 
-                      size="sm" 
-                      weight={500} 
-                      align="center" 
-                      sx={{ 
+                    <Text
+                      size="sm"
+                      weight={500}
+                      align="center"
+                      sx={{
                         cursor: 'help',
                         textAlign: 'center',
                         wordBreak: 'break-word',
@@ -185,9 +185,9 @@ const showShareInformationsModal = (
                             {getFileIcon(file.name)}
                           </Box>
                         )}
-                        <Tooltip 
-                          label={file.name} 
-                          position="bottom" 
+                        <Tooltip
+                          label={file.name}
+                          position="bottom"
                           openDelay={300}
                           multiline
                           maw={400}
@@ -216,18 +216,18 @@ const showShareInformationsModal = (
             </Box>
           </Box>
         )}
-        
+
         {/* File Names Section */}
         <Box>
           <Text size="sm">
             <b>Archivo(s): </b>
             {fileNames.length > 0 ? (
               fileNames.length === 1 ? (
-                <Tooltip 
-                  label={fileNames[0]} 
-                  position="top" 
-                  multiline 
-                  maw={400} 
+                <Tooltip
+                  label={fileNames[0]}
+                  position="top"
+                  multiline
+                  maw={400}
                   disabled={fileNames[0].length <= 50}
                   styles={{
                     tooltip: {
@@ -242,10 +242,10 @@ const showShareInformationsModal = (
                   </Text>
                 </Tooltip>
               ) : (
-                <Tooltip 
-                  label={fileNames.join(', ')} 
-                  position="top" 
-                  multiline 
+                <Tooltip
+                  label={fileNames.join(', ')}
+                  position="top"
+                  multiline
                   maw={400}
                   styles={{
                     tooltip: {
@@ -265,7 +265,7 @@ const showShareInformationsModal = (
             )}
           </Text>
         </Box>
-        
+
         <Text size="sm">
           <b>
             <FormattedMessage id="account.shares.table.id" />:{" "}
@@ -294,7 +294,7 @@ const showShareInformationsModal = (
           {formattedExpiration}
         </Text>
         <Divider />
-        
+
         {/* All links without labels */}
         <Stack spacing="sm">
           {/* Main share link */}
@@ -336,17 +336,19 @@ const showShareInformationsModal = (
               </>
             }
           />
-          
+
           {/* Direct download URLs for files */}
           {share.files && share.files.length > 0 && share.files.map((file: any, index: number) => {
-            const directDownloadUrl = `${window.location.origin}/api/shares/${share.id}/files/${file.id}/${encodeURIComponent(file.name)}`;
+            const directDownloadUrl = file.publicToken
+              ? `${window.location.origin}/api/f/${file.publicToken}`
+              : `${window.location.origin}/api/shares/${share.id}/files/${file.id}/${encodeURIComponent(file.name)}`;
             const displayUrl = truncateUrl(directDownloadUrl, 55);
             return (
               <Box key={file.id}>
-                <Tooltip 
-                  label={`Enlace directo: ${file.name}`} 
-                  position="top" 
-                  multiline 
+                <Tooltip
+                  label={`Enlace directo: ${file.name}`}
+                  position="top"
+                  multiline
                   maw={400}
                   styles={{
                     tooltip: {
@@ -399,7 +401,7 @@ const showShareInformationsModal = (
             );
           })}
         </Stack>
-        
+
         <Divider />
         <Text size="sm">
           <b>
@@ -426,7 +428,7 @@ const showShareInformationsModal = (
             {formattedMaxShareSize}
           </Text>
         </Flex>
-        
+
         {/* Detailed file list for multiple files */}
         {share.files && share.files.length > 1 && (
           <Box>
@@ -437,9 +439,9 @@ const showShareInformationsModal = (
               {share.files.map((file: any, index: number) => (
                 <Group key={file.id} spacing="xs">
                   {getFileIcon(file.name)}
-                  <Tooltip 
-                    label={file.name} 
-                    position="top" 
+                  <Tooltip
+                    label={file.name}
+                    position="top"
                     openDelay={300}
                     multiline
                     maw={400}
