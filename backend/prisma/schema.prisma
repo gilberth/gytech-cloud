@@ -78,13 +78,14 @@ model Share {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
 
-  name          String?
-  uploadLocked  Boolean  @default(false)
-  isZipReady    Boolean  @default(false)
-  views         Int      @default(0)
-  expiration    DateTime
-  description   String?
-  removedReason String?
+  name              String?
+  uploadLocked      Boolean  @default(false)
+  isZipReady        Boolean  @default(false)
+  views             Int      @default(0)
+  expiration        DateTime
+  description       String?
+  removedReason     String?
+  emailNotification Boolean  @default(false)
 
   creatorId String?
   creator   User?   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
@@ -96,7 +97,7 @@ model Share {
   recipients ShareRecipient[]
   files      File[]
   storageProvider String @default("LOCAL")
-  
+
   @@index([creatorId])
   @@index([expiration])
   @@index([uploadLocked])
@@ -130,8 +131,9 @@ model ShareRecipient {
 }
 
 model File {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  publicToken String   @unique @default(uuid())
 
   name String
   size String

@@ -64,6 +64,43 @@ export class FileService {
     return await storageService.getZip(shareId);
   }
 
+  async getByPublicToken(token: string): Promise<File> {
+    const file = await this.prisma.file.findUnique({
+      where: { publicToken: token },
+      include: {
+        share: {
+          include: {
+            creator: true,
+          },
+        },
+      },
+    });
+
+    if (!file) {
+      throw new Error("File not found");
+    }
+
+    const share = await this.prisma.share.findFirst({
+      where: { id: file.shareId },
+    });
+
+    const storageService = this.getStorageService(share.storageProvider);
+    const fileStream = await storageService.get(file.shareId, file.id);
+
+    return {
+      metaData: {
+        id: file.id,
+        size: file.size,
+        createdAt: file.createdAt,
+        mimeType: fileStream.metaData.mimeType,
+        name: file.name,
+        shareId: file.shareId,
+        share: file.share,
+      },
+      file: fileStream.file,
+    };
+  }
+
   private async streamToUint8Array(stream: Readable): Promise<Uint8Array> {
     const chunks: Buffer[] = [];
 
@@ -83,6 +120,12 @@ export interface File {
     mimeType: string | false;
     name: string;
     shareId: string;
+    share?: {
+      emailNotification: boolean;
+      creator?: {
+        email: string;
+      };
+    };
   };
   file: Readable;
 }

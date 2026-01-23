@@ -138,4 +138,20 @@ export class EmailService {
         throw new InternalServerErrorException(e.message);
       });
   }
+
+  async sendShareAccessNotification(
+    recipientEmail: string,
+    shareId: string,
+    actionType: string,
+    details: string,
+  ) {
+    const shareUrl = `${this.config.get("general.appUrl")}/s/${shareId}`;
+    const appName = this.config.get("general.appName");
+
+    await this.sendMail(
+      recipientEmail,
+      `[${appName}] Share Access Notification - ${actionType}`,
+      `Your share has been accessed.\n\nAction: ${actionType}\nShare URL: ${shareUrl}\nDetails: ${details}\n\nThis is an automated notification from ${appName}.`,
+    );
+  }
 }
