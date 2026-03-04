@@ -67,7 +67,7 @@ export const configVariables = {
     },
     chunkSize: {
       type: "filesize",
-      defaultValue: "10000000",
+      defaultValue: "52428800",
       secret: false,
     },
     autoOpenShareModal: {

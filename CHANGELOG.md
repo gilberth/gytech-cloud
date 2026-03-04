@@ -1,3 +1,13 @@
+## [Unreleased] (2026-03-04)
+
+### Performance
+
+* **upload:** parallel chunk uploads - upload 3 chunks concurrently per file instead of sequentially
+* **backend:** offset-based file writing in local storage to support out-of-order chunk assembly
+* **backend:** S3 multipart upload now accepts chunks in any order and sorts before completion
+* **config:** increase default chunk size from 10MB to 50MB (reduces HTTP requests for large files)
+* **upload:** exponential backoff retry logic (3 retries with 2s/4s/6s delays) replaces 5s fixed retry
+
 ## [1.13.0](https://github.com/stonith404/pingvin-share/compare/v1.12.0...v1.13.0) (2025-05-25)
 
 
