@@ -4,10 +4,11 @@ import {
   HttpStatus,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import * as crypto from "crypto";
-import { createReadStream } from "fs";
+import { constants as fsConstants, createReadStream } from "fs";
 import * as fs from "fs/promises";
 import * as mime from "mime-types";
 import { ConfigService } from "src/config/config.service";
@@ -18,6 +19,14 @@ import { Readable } from "stream";
 
 @Injectable()
 export class LocalFileService {
+  private readonly logger = new Logger(LocalFileService.name);
+
+  // Track received chunks per file for parallel upload support
+  private chunkTracker: Record<
+    string,
+    { received: Set<number>; total: number }
+  > = {};
+
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
@@ -43,25 +52,23 @@ export class LocalFileService {
     if (share.uploadLocked)
       throw new BadRequestException("Share is already completed");
 
-    let diskFileSize: number;
-    try {
-      diskFileSize = (
-        await fs.stat(`${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`)
-      ).size;
-    } catch {
-      diskFileSize = 0;
+    // Validate chunk index is not a duplicate
+    const trackerKey = `${shareId}/${file.id}`;
+    if (!this.chunkTracker[trackerKey]) {
+      this.chunkTracker[trackerKey] = {
+        received: new Set(),
+        total: chunk.total,
+      };
     }
+    const tracker = this.chunkTracker[trackerKey];
 
-    // If the sent chunk index and the expected chunk index doesn't match throw an error
-    const chunkSize = this.config.get("share.chunkSize");
-    const expectedChunkIndex = Math.ceil(diskFileSize / chunkSize);
-
-    if (expectedChunkIndex != chunk.index)
+    if (tracker.received.has(chunk.index)) {
       throw new BadRequestException({
-        message: "Unexpected chunk received",
-        error: "unexpected_chunk_index",
-        expectedChunkIndex,
+        message: "Duplicate chunk received",
+        error: "duplicate_chunk",
+        chunkIndex: chunk.index,
       });
+    }
 
     const buffer = Buffer.from(data, "base64");
 
@@ -78,6 +85,15 @@ export class LocalFileService {
       0,
     );
 
+    let diskFileSize: number;
+    try {
+      diskFileSize = (
+        await fs.stat(`${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`)
+      ).size;
+    } catch {
+      diskFileSize = 0;
+    }
+
     const shareSizeSum = fileSizeSum + diskFileSize + buffer.byteLength;
 
     if (
@@ -91,17 +107,33 @@ export class LocalFileService {
       );
     }
 
-    await fs.appendFile(
-      `${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`,
-      buffer,
-    );
+    // Write chunk at the correct offset (supports out-of-order/parallel uploads)
+    const chunkSize = this.config.get("share.chunkSize");
+    const offset = chunk.index * chunkSize;
+    const tmpPath = `${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`;
 
-    const isLastChunk = chunk.index == chunk.total - 1;
-    if (isLastChunk) {
-      await fs.rename(
-        `${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`,
-        `${SHARE_DIRECTORY}/${shareId}/${file.id}`,
-      );
+    await fs.mkdir(`${SHARE_DIRECTORY}/${shareId}`, { recursive: true });
+
+    // Open for read/write, create if not exists, no truncation
+    // O_RDWR | O_CREAT is safe for concurrent access (no race condition)
+    const fd = await fs.open(
+      tmpPath,
+      fsConstants.O_RDWR | fsConstants.O_CREAT,
+    );
+    try {
+      await fd.write(buffer, 0, buffer.byteLength, offset);
+    } finally {
+      await fd.close();
+    }
+
+    // Mark chunk as received
+    tracker.received.add(chunk.index);
+
+    // Check if all chunks have been received
+    const allChunksReceived = tracker.received.size === chunk.total;
+
+    if (allChunksReceived) {
+      await fs.rename(tmpPath, `${SHARE_DIRECTORY}/${shareId}/${file.id}`);
       const fileSize = (
         await fs.stat(`${SHARE_DIRECTORY}/${shareId}/${file.id}`)
       ).size;
@@ -113,6 +145,9 @@ export class LocalFileService {
           share: { connect: { id: shareId } },
         },
       });
+
+      // Clean up tracker
+      delete this.chunkTracker[trackerKey];
     }
 
     return file;

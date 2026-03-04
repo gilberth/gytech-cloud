@@ -1,6 +1,5 @@
 import { Button, Group } from "@mantine/core";
 import { cleanNotifications } from "@mantine/notifications";
-import { AxiosError } from "axios";
 import { useRouter } from "next/router";
 import pLimit from "p-limit";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,7 +12,8 @@ import shareService from "../../services/share.service";
 import { FileListItem, FileMetaData, FileUpload } from "../../types/File.type";
 import toast from "../../utils/toast.util";
 
-const promiseLimit = pLimit(3);
+const fileLimit = pLimit(3); // Max 3 files uploading concurrently
+const CHUNK_CONCURRENCY = 3; // Max 3 chunks in parallel per file
 let errorToastShown = false;
 
 const EditableUpload = ({
@@ -63,9 +63,9 @@ const EditableUpload = ({
 
   const uploadFiles = async (files: FileUpload[]) => {
     const fileUploadPromises = files.map(async (file, fileIndex) =>
-      // Limit the number of concurrent uploads to 3
-      promiseLimit(async () => {
+      fileLimit(async () => {
         let fileId: string | undefined;
+        let completedChunks = 0;
 
         const setFileProgress = (progress: number) => {
           setUploadingFiles((files) =>
@@ -80,48 +80,71 @@ const EditableUpload = ({
 
         setFileProgress(1);
 
-        let chunks = Math.ceil(file.size / chunkSize.current);
+        let totalChunks = Math.ceil(file.size / chunkSize.current);
+        if (totalChunks == 0) totalChunks++;
 
-        // If the file is 0 bytes, we still need to upload 1 chunk
-        if (chunks == 0) chunks++;
+        // First chunk must be sent alone to get the fileId
+        const firstBlob = file.slice(0, chunkSize.current);
+        try {
+          const response = await shareService.uploadFile(
+            shareId,
+            firstBlob,
+            { id: fileId, name: file.name },
+            0,
+            totalChunks,
+          );
+          fileId = response.id;
+          completedChunks++;
+          setFileProgress((completedChunks / totalChunks) * 100);
+        } catch (e) {
+          setFileProgress(-1);
+          return;
+        }
 
-        for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
-          const from = chunkIndex * chunkSize.current;
-          const to = from + chunkSize.current;
-          const blob = file.slice(from, to);
+        // Upload remaining chunks in parallel
+        if (totalChunks > 1) {
+          const chunkLimit = pLimit(CHUNK_CONCURRENCY);
+          const chunkPromises = [];
+
+          for (let i = 1; i < totalChunks; i++) {
+            chunkPromises.push(
+              chunkLimit(async () => {
+                const from = i * chunkSize.current;
+                const to = from + chunkSize.current;
+                const blob = file.slice(from, to);
+
+                let retries = 0;
+                const maxRetries = 3;
+
+                while (retries < maxRetries) {
+                  try {
+                    await shareService.uploadFile(
+                      shareId,
+                      blob,
+                      { id: fileId, name: file.name },
+                      i,
+                      totalChunks,
+                    );
+                    completedChunks++;
+                    setFileProgress((completedChunks / totalChunks) * 100);
+                    return;
+                  } catch (e) {
+                    retries++;
+                    if (retries >= maxRetries) {
+                      setFileProgress(-1);
+                      throw e;
+                    }
+                    await new Promise((r) => setTimeout(r, 2000 * retries));
+                  }
+                }
+              }),
+            );
+          }
+
           try {
-            await shareService
-              .uploadFile(
-                shareId,
-                blob,
-                {
-                  id: fileId,
-                  name: file.name,
-                },
-                chunkIndex,
-                chunks,
-              )
-              .then((response) => {
-                fileId = response.id;
-              });
-
-            setFileProgress(((chunkIndex + 1) / chunks) * 100);
-          } catch (e) {
-            if (
-              e instanceof AxiosError &&
-              e.response?.data.error == "unexpected_chunk_index"
-            ) {
-              // Retry with the expected chunk index
-              chunkIndex = e.response!.data!.expectedChunkIndex - 1;
-              continue;
-            } else {
-              setFileProgress(-1);
-              // Retry after 5 seconds
-              await new Promise((resolve) => setTimeout(resolve, 5000));
-              chunkIndex = -1;
-
-              continue;
-            }
+            await Promise.all(chunkPromises);
+          } catch {
+            setFileProgress(-1);
           }
         }
       }),

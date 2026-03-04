@@ -36,6 +36,8 @@ export class S3FileService {
     {
       uploadId: string;
       parts: Array<{ ETag: string | undefined; PartNumber: number }>;
+      receivedChunks: Set<number>;
+      totalChunks: number;
     }
   > = {};
 
@@ -62,8 +64,8 @@ export class S3FileService {
     const s3Instance = this.getS3Instance();
 
     try {
-      // Initialize multipart upload if it's the first chunk
-      if (chunk.index === 0) {
+      // Initialize multipart upload if not yet started
+      if (!this.multipartUploads[file.id]) {
         const multipartInitResponse = await s3Instance.send(
           new CreateMultipartUploadCommand({
             Bucket: bucketName,
@@ -76,24 +78,18 @@ export class S3FileService {
           throw new Error("Failed to initialize multipart upload.");
         }
 
-        // Store the uploadId and parts list in memory
         this.multipartUploads[file.id] = {
           uploadId,
           parts: [],
+          receivedChunks: new Set(),
+          totalChunks: chunk.total,
         };
       }
 
-      // Get the ongoing multipart upload
       const multipartUpload = this.multipartUploads[file.id];
-      if (!multipartUpload) {
-        throw new InternalServerErrorException(
-          "Multipart upload session not found.",
-        );
-      }
-
       const uploadId = multipartUpload.uploadId;
 
-      // Upload the current chunk
+      // Upload the current chunk (supports parallel/out-of-order)
       const partNumber = chunk.index + 1; // Part numbers start from 1
 
       const uploadPartResponse: UploadPartCommandOutput = await s3Instance.send(
@@ -106,26 +102,36 @@ export class S3FileService {
         }),
       );
 
-      // Store the ETag and PartNumber for later completion
+      // Store the ETag and PartNumber
       multipartUpload.parts.push({
         ETag: uploadPartResponse.ETag,
         PartNumber: partNumber,
       });
 
-      // Complete the multipart upload if it's the last chunk
-      if (chunk.index === chunk.total - 1) {
+      // Track received chunks
+      multipartUpload.receivedChunks.add(chunk.index);
+
+      // Complete when all chunks have been received
+      const allChunksReceived =
+        multipartUpload.receivedChunks.size === multipartUpload.totalChunks;
+
+      if (allChunksReceived) {
+        // Sort parts by PartNumber (required by S3)
+        const sortedParts = multipartUpload.parts.sort(
+          (a, b) => a.PartNumber - b.PartNumber,
+        );
+
         await s3Instance.send(
           new CompleteMultipartUploadCommand({
             Bucket: bucketName,
             Key: key,
             UploadId: uploadId,
             MultipartUpload: {
-              Parts: multipartUpload.parts,
+              Parts: sortedParts,
             },
           }),
         );
 
-        // Remove the completed upload from memory
         delete this.multipartUploads[file.id];
       }
     } catch (error) {
@@ -149,8 +155,9 @@ export class S3FileService {
       throw new Error("Multipart upload failed. The upload has been aborted.");
     }
 
-    const isLastChunk = chunk.index == chunk.total - 1;
-    if (isLastChunk) {
+    // Create DB record when all chunks received
+    const allDone = !this.multipartUploads[file.id];
+    if (allDone) {
       const fileSize: number = await this.getFileSize(shareId, file.name);
 
       await this.prisma.file.create({
