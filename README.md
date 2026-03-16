@@ -1,8 +1,8 @@
----
+# GYTECH Cloud
 
-GYTECH Cloud is a self-hosted file sharing platform and an alternative for WeTransfer.
+Self-hosted file sharing platform and WeTransfer alternative. Built on [Pingvin Share](https://github.com/stonith404/pingvin-share) with significant performance and UX enhancements.
 
-## ✨ Features
+## Features
 
 ### Core Sharing
 - **Automatic file upload** - Files upload immediately upon selection
@@ -14,64 +14,102 @@ GYTECH Cloud is a self-hosted file sharing platform and an alternative for WeTra
 - Email recipients
 - Reverse shares
 
+### Upload Performance
+- **Parallel chunk uploads** - 5 concurrent chunk uploads per file with 3 files in parallel
+- **50MB chunk size** - Optimized for large files (900MB+ tested through tunneled connections)
+- **Retry with exponential backoff** - Failed chunks retry individually (3 attempts)
+- **Client-driven assembly** - Chunks assembled server-side after all uploads complete
+- **Real-time progress** - Byte-level progress tracking with horizontal progress bar and ETA countdown
+- **Orphan cleanup** - Hourly cron job removes abandoned upload chunks older than 1 hour
+- **Low ZIP compression** - Level 1 compression for ~10x faster share packaging
+
 ### User Experience
-- **Advanced shares management** - Comprehensive file organization with search, filtering, and bulk operations
+- **Advanced shares management** - Search, filtering, bulk operations, and status badges
 - **Smart file recognition** - Specific icons for PDF, Word, Excel, PowerPoint with extension badges
 - **Real image previews** - 40px thumbnails for uploaded images with detailed tooltips
-- **Streamlined interface** - No manual "Share" button required, instant uploads
-- **Quick Share Mode** - One-click sharing with intelligent defaults for rapid file distribution
-- **Rich content previews** - Enhanced share landing pages with image galleries and file categorization
+- **Quick Share mode** - One-click sharing with 7-day default expiration
+- **Clipboard paste** - Paste images directly with Ctrl+V / Cmd+V
+- **Upload ETA** - Estimated time remaining displayed during uploads
+- **Rich content previews** - Image galleries and file categorization on share landing pages
+- **Mobile-responsive** - Adaptive card layout for mobile file management
 
-### Authentication & Security  
+### Authentication & Security
 - OIDC and LDAP authentication
-- Integration with ClamAV for security scans
+- Integration with ClamAV for malware scanning
 - Password protection and visitor limits
+- TOTP two-factor authentication
 
-### Storage Options
-- Different file providers: local storage and S3
+### Storage
+- Local filesystem or S3-compatible storage
 - Configurable upload settings and file handling
+- Redis cache support (optional)
 
-## 🐧 Get to know GYTECH Cloud
+## Setup
 
-## 🚀 Recent Improvements
+### Docker (recommended)
 
-### Advanced Shares Management
-- **Intelligent search**: Real-time file search across names, extensions, and content with debounced filtering
-- **Status indicators**: Visual badges for share states (Active, Expired, Expiring Soon, View Limit Reached)
-- **Bulk operations**: Multi-select with batch delete functionality and progress tracking
-- **Mobile-responsive design**: Adaptive card layout for seamless mobile file management
-- **Enhanced accessibility**: Color-blind friendly design with shape and text differentiation
+```bash
+# Download docker-compose.yml, then:
+docker compose up -d
+```
 
-### Smart File Recognition System  
-- **Document-specific icons**: Distinct icons for PDF (red), Word (blue), Excel (green), PowerPoint (orange)
-- **Extension badges**: Small overlays showing file extensions (PDF, DOCX, XLSX) for instant identification
-- **Rich tooltips**: Hover information with file type descriptions and sizes
-- **Improved visual hierarchy**: Better organization of file information in limited space
+The app is available at `http://localhost:3000`.
 
-### Quick Share Mode
-- **One-click sharing**: Bypass configuration modal with intelligent defaults for rapid distribution
-- **Smart expiration**: Automatic 7-day expiration for quick shares, "never" for configured shares
-- **Streamlined workflow**: Reduces sharing time from 2 minutes to 30 seconds for common use cases
-- **Contextual naming**: Automatically generates meaningful share names based on file content
+### Docker Compose
 
-### Enhanced Content Previews
-- **Rich landing pages**: Modern card-based layout with image galleries and file categorization
-- **Visual file grouping**: Separate sections for images, documents, videos, and other file types
-- **Improved download experience**: Cleaner interface with better file organization and preview capabilities
-- **Mobile optimization**: Touch-friendly interface that works seamlessly across all device sizes
+```yaml
+services:
+  gytech-cloud:
+    image: ghcr.io/gilberth/gytech-cloud:latest
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    environment:
+      - TRUST_PROXY=false  # Set to true behind a reverse proxy
+    volumes:
+      - "./data:/opt/app/backend/data"
+      - "./data/images:/opt/app/frontend/public/img"
+      # - "./config.yaml:/opt/app/config.yaml"  # Optional: config via file instead of UI
+```
 
-### Automatic Upload System
-- **Instant uploads**: Files upload immediately upon selection with real-time progress
-- **Clipboard integration**: Paste images directly (Ctrl+V/Cmd+V) with automatic detection
-- **Friendly URLs**: Download links include actual filenames for better user experience
-- **Smart file serving**: Single files get direct links, multiple files are automatically zipped
+### ClamAV Integration
 
-## ⌨️ Setup
+See the [ClamAV setup guide](https://stonith404.github.io/pingvin-share/setup/integrations/#clamav-docker-only) for malware scanning.
 
-### Installation with Docker (recommended)
+## Tech Stack
 
-1. Download the `docker-compose.yml` file
-2. Run `docker compose up -d`
+| Layer | Technology |
+|-------|-----------|
+| Backend | NestJS, TypeScript, Prisma ORM, SQLite |
+| Frontend | Next.js, TypeScript, Mantine v6 |
+| Infrastructure | Docker, Caddy reverse proxy |
+| CI/CD | GitHub Actions |
 
-The website is now listening on `http://localhost:3000`, have fun with GYTECH Cloud 🐧!
+## Development
 
+```bash
+# Backend
+cd backend
+npm install
+npx prisma migrate dev
+npx prisma db seed
+npm run dev              # Port 8080
+
+# Frontend
+cd frontend
+npm install
+npm run dev              # Port 3000
+```
+
+## Configuration
+
+Configuration is managed through the admin UI or a YAML config file. See `config.example.yaml` for available options.
+
+Key upload settings (configurable in admin panel):
+- `share.chunkSize` - Upload chunk size (default: 50MB)
+- `share.maxSize` - Maximum share size
+- `share.shareIdLength` - Length of generated share IDs
+
+## License
+
+Based on [Pingvin Share](https://github.com/stonith404/pingvin-share) by stonith404.
