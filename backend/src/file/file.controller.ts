@@ -105,16 +105,20 @@ export class FileController {
     }
 
     // Check if share is expired
-    if (moment().isAfter(share.expiration) && !moment(share.expiration).isSame(0)) {
+    if (
+      moment().isAfter(share.expiration) &&
+      !moment(share.expiration).isSame(0)
+    ) {
       throw new NotFoundException("Share expired");
     }
 
     // For password protected shares, we still allow metadata access
     // The actual file access will be protected by FileSecurityGuard
-    
+
     const file = await this.fileService.get(shareId, fileId);
-    const mimeType = mime?.lookup?.(file.metaData.name) || "application/octet-stream";
-    
+    const mimeType =
+      mime?.lookup?.(file.metaData.name) || "application/octet-stream";
+
     return {
       id: fileId,
       name: file.metaData.name,
@@ -159,7 +163,8 @@ export class FileController {
     preview?: string,
   ) {
     const file = await this.fileService.get(shareId, fileId);
-    const mimeType = mime?.lookup?.(file.metaData.name) || "application/octet-stream";
+    const mimeType =
+      mime?.lookup?.(file.metaData.name) || "application/octet-stream";
 
     const headers = {
       "Content-Type": mimeType,
@@ -171,16 +176,23 @@ export class FileController {
     if (preview === "true" || download === "false") {
       // Allow iframe embedding for PDFs and enable media controls
       if (mimeType === "application/pdf") {
-        headers["Content-Security-Policy"] = "frame-ancestors 'self'; object-src 'none'";
+        headers["Content-Security-Policy"] =
+          "frame-ancestors 'self'; object-src 'none'";
         headers["X-Frame-Options"] = "SAMEORIGIN";
-      } else if (mimeType.startsWith("video/") || mimeType.startsWith("audio/")) {
-        headers["Content-Security-Policy"] = "media-src 'self'; object-src 'none'";
+      } else if (
+        mimeType.startsWith("video/") ||
+        mimeType.startsWith("audio/")
+      ) {
+        headers["Content-Security-Policy"] =
+          "media-src 'self'; object-src 'none'";
       } else if (mimeType.startsWith("image/")) {
-        headers["Content-Security-Policy"] = "img-src 'self'; object-src 'none'";
+        headers["Content-Security-Policy"] =
+          "img-src 'self'; object-src 'none'";
       } else {
-        headers["Content-Security-Policy"] = "default-src 'none'; script-src 'none'";
+        headers["Content-Security-Policy"] =
+          "default-src 'none'; script-src 'none'";
       }
-      
+
       headers["Content-Disposition"] = contentDisposition(file.metaData.name, {
         type: "inline",
       });
@@ -212,8 +224,8 @@ export class FileController {
   }
 
   private supportsPreview(mimeType: string, fileName: string): boolean {
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    
+    const ext = fileName.split(".").pop()?.toLowerCase() || "";
+
     return (
       mimeType.startsWith("image/") ||
       mimeType.startsWith("video/") ||
@@ -221,23 +233,59 @@ export class FileController {
       mimeType.startsWith("text/") ||
       mimeType === "application/pdf" ||
       // Office documents
-      ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext) ||
+      ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext) ||
       // Code files
-      ['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'h', 'css', 'html', 'xml', 'json', 'yaml', 'yml'].includes(ext)
+      [
+        "js",
+        "ts",
+        "jsx",
+        "tsx",
+        "py",
+        "java",
+        "cpp",
+        "c",
+        "h",
+        "css",
+        "html",
+        "xml",
+        "json",
+        "yaml",
+        "yml",
+      ].includes(ext)
     );
   }
 
   private getPreviewType(mimeType: string, fileName: string): string {
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    
+    const ext = fileName.split(".").pop()?.toLowerCase() || "";
+
     if (mimeType.startsWith("image/")) return "image";
     if (mimeType.startsWith("video/")) return "video";
     if (mimeType.startsWith("audio/")) return "audio";
     if (mimeType === "application/pdf") return "pdf";
     if (mimeType.startsWith("text/")) return "text";
-    if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) return "office";
-    if (['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'h', 'css', 'html', 'xml', 'json', 'yaml', 'yml'].includes(ext)) return "code";
-    
+    if (["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext))
+      return "office";
+    if (
+      [
+        "js",
+        "ts",
+        "jsx",
+        "tsx",
+        "py",
+        "java",
+        "cpp",
+        "c",
+        "h",
+        "css",
+        "html",
+        "xml",
+        "json",
+        "yaml",
+        "yml",
+      ].includes(ext)
+    )
+      return "code";
+
     return "unsupported";
   }
 }

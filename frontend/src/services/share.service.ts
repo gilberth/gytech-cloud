@@ -66,7 +66,7 @@ const isShareIdAvailable = async (id: string): Promise<boolean> => {
 
 const doesFileSupportPreview = (fileName: string) => {
   const mimeType = (mime.contentType(fileName) || "").split(";")[0];
-  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
 
   if (!mimeType && !ext) return false;
 
@@ -77,9 +77,25 @@ const doesFileSupportPreview = (fileName: string) => {
     mimeType.startsWith("text/"),
     mimeType === "application/pdf",
     // Office documents
-    ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext),
+    ["doc", "docx", "xls", "xlsx", "ppt", "pptx"].includes(ext),
     // Code files
-    ['js', 'ts', 'jsx', 'tsx', 'py', 'java', 'cpp', 'c', 'h', 'css', 'html', 'xml', 'json', 'yaml', 'yml'].includes(ext),
+    [
+      "js",
+      "ts",
+      "jsx",
+      "tsx",
+      "py",
+      "java",
+      "cpp",
+      "c",
+      "h",
+      "css",
+      "html",
+      "xml",
+      "json",
+      "yaml",
+      "yml",
+    ].includes(ext),
   ];
 
   return supportedMimeTypes.some((isSupported) => isSupported);

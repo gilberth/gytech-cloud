@@ -31,7 +31,9 @@ export class LocalFileService {
     shareId: string,
   ) {
     if (!file.id) {
-      throw new BadRequestException("File ID is required (generate client-side)");
+      throw new BadRequestException(
+        "File ID is required (generate client-side)",
+      );
     } else if (!isValidUUID(file.id)) {
       throw new BadRequestException("Invalid file ID format");
     }
@@ -87,9 +89,7 @@ export class LocalFileService {
       try {
         await fs.access(`${chunkDir}/${fileId}.chunk-${i}`);
       } catch {
-        throw new BadRequestException(
-          `Missing chunk ${i} of ${totalChunks}`,
-        );
+        throw new BadRequestException(`Missing chunk ${i} of ${totalChunks}`);
       }
     }
 
@@ -145,9 +145,7 @@ export class LocalFileService {
 
     // Delete chunk files (safe — final file is verified)
     for (let i = 0; i < totalChunks; i++) {
-      await fs
-        .unlink(`${chunkDir}/${fileId}.chunk-${i}`)
-        .catch(() => {});
+      await fs.unlink(`${chunkDir}/${fileId}.chunk-${i}`).catch(() => {});
     }
 
     // Create DB record

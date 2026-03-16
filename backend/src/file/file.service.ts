@@ -161,9 +161,7 @@ export class FileService {
           if (fileStat.mtimeMs < oneHourAgo) {
             await fs.unlink(filePath).catch(() => {});
             cleaned++;
-            this.logger.log(
-              `Cleaned orphan chunk: ${shareDir}/${file}`,
-            );
+            this.logger.log(`Cleaned orphan chunk: ${shareDir}/${file}`);
           }
         }
       }

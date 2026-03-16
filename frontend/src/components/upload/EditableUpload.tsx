@@ -114,12 +114,7 @@ const EditableUpload = ({
           await Promise.all(chunkPromises);
 
           // Trigger server-side assembly
-          await shareService.completeFile(
-            shareId,
-            fileId,
-            file.name,
-            chunks,
-          );
+          await shareService.completeFile(shareId, fileId, file.name, chunks);
 
           // Only now set 100%
           setFileProgress(100);

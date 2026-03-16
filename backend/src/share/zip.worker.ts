@@ -1,13 +1,13 @@
-import { parentPort, workerData } from 'worker_threads';
-import * as archiver from 'archiver';
-import * as fs from 'fs';
+import { parentPort, workerData } from "worker_threads";
+import * as archiver from "archiver";
+import * as fs from "fs";
 
 async function createZip() {
   try {
     const { shareId, files, shareDirectory, compressionLevel } = workerData;
     const path = `${shareDirectory}/${shareId}`;
 
-    const archive = archiver('zip', {
+    const archive = archiver("zip", {
       zlib: { level: compressionLevel },
     });
     const writeStream = fs.createWriteStream(`${path}/archive.zip`);
@@ -22,12 +22,14 @@ async function createZip() {
     await archive.finalize();
 
     if (parentPort) {
-      parentPort.postMessage('done');
+      parentPort.postMessage("done");
     }
   } catch (error) {
     if (parentPort) {
       // Send error message or object
-      parentPort.postMessage({ error: error instanceof Error ? error.message : String(error) });
+      parentPort.postMessage({
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     process.exit(1);
   }
