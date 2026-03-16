@@ -1,3 +1,22 @@
+## [Unreleased]
+
+### Performance
+
+* **upload:** parallel chunk uploads (3 concurrent) reduce upload time by 4-6x for large files
+* **config:** default chunk size increased from 10MB to 50MB (existing users: update in admin panel)
+* **config:** ZIP compression reduced from level 9 to level 1 (~10x faster for mixed files)
+
+### Features
+
+* **file:** new `POST /shares/:shareId/files/:fileId/complete` endpoint for client-driven chunk assembly
+* **file:** hourly orphan chunk cleanup cron job removes abandoned uploads older than 1 hour
+
+### Bug Fixes
+
+* **upload:** failed chunks retry individually with exponential backoff instead of restarting entire file
+* **file:** removed unnecessary Buffer.from(data, "base64") copy in file upload pipeline
+* **upload:** fixed missing `await` on Promise.all in upload page
+
 ## [1.13.0](https://github.com/stonith404/pingvin-share/compare/v1.12.0...v1.13.0) (2025-05-25)
 
 
