@@ -113,7 +113,7 @@ const FileList = <T extends FileListItem = FileListItem>({
           <th>
             <FormattedMessage id="upload.filelist.size" />
           </th>
-          <th></th>
+          <th style={{ width: 160 }}></th>
         </tr>
       </thead>
       <tbody>{rows}</tbody>
