@@ -113,7 +113,7 @@ const Upload = ({
       promiseLimit(async () => {
         const fileId = crypto.randomUUID();
         const chunkLimit = pLimit(CHUNK_CONCURRENCY);
-        const completedChunks = new Set<number>();
+        const chunkBytesLoaded: Record<number, number> = {};
 
         const setFileProgress = (progress: number) => {
           setFiles((files) =>
@@ -140,20 +140,25 @@ const Upload = ({
                   const from = chunkIndex * chunkSize.current;
                   const to = from + chunkSize.current;
                   const blob = file.slice(from, to);
+                  chunkBytesLoaded[chunkIndex] = 0;
                   await shareService.uploadFile(
                     createdShare.id,
                     blob,
                     { id: fileId, name: file.name },
                     chunkIndex,
                     totalChunks,
+                    (loaded) => {
+                      chunkBytesLoaded[chunkIndex] = loaded;
+                      const totalLoaded = Object.values(
+                        chunkBytesLoaded,
+                      ).reduce((a, b) => a + b, 0);
+                      const progress = Math.min(
+                        (totalLoaded / file.size) * 100,
+                        99,
+                      );
+                      setFileProgress(Math.max(progress, 1));
+                    },
                   );
-                  completedChunks.add(chunkIndex);
-                  // Cap at 99% — 100% only after completeFile succeeds
-                  const progress = Math.min(
-                    (completedChunks.size / totalChunks) * 100,
-                    99,
-                  );
-                  setFileProgress(progress);
                 }),
               ),
             );

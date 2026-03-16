@@ -1,4 +1,4 @@
-export const CHUNK_CONCURRENCY = 3;
+export const CHUNK_CONCURRENCY = 5;
 
 export const retryChunk = async (
   fn: () => Promise<void>,

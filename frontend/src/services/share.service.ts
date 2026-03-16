@@ -122,6 +122,7 @@ const uploadFile = async (
   },
   chunkIndex: number,
   totalChunks: number,
+  onUploadProgress?: (loaded: number) => void,
 ): Promise<FileUploadResponse> => {
   return (
     await api.post(`shares/${shareId}/files`, chunk, {
@@ -132,6 +133,9 @@ const uploadFile = async (
         chunkIndex,
         totalChunks,
       },
+      onUploadProgress: onUploadProgress
+        ? (event) => onUploadProgress(event.loaded ?? 0)
+        : undefined,
     })
   ).data;
 };

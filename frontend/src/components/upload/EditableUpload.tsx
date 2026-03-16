@@ -66,7 +66,7 @@ const EditableUpload = ({
       promiseLimit(async () => {
         const fileId = crypto.randomUUID();
         const chunkLimit = pLimit(CHUNK_CONCURRENCY);
-        const completedChunks = new Set<number>();
+        const chunkBytesLoaded: Record<number, number> = {};
 
         const setFileProgress = (progress: number) => {
           setUploadingFiles((files) =>
@@ -93,20 +93,25 @@ const EditableUpload = ({
                   const from = chunkIndex * chunkSize.current;
                   const to = from + chunkSize.current;
                   const blob = file.slice(from, to);
+                  chunkBytesLoaded[chunkIndex] = 0;
                   await shareService.uploadFile(
                     shareId,
                     blob,
                     { id: fileId, name: file.name },
                     chunkIndex,
                     chunks,
+                    (loaded) => {
+                      chunkBytesLoaded[chunkIndex] = loaded;
+                      const totalLoaded = Object.values(
+                        chunkBytesLoaded,
+                      ).reduce((a, b) => a + b, 0);
+                      const progress = Math.min(
+                        (totalLoaded / file.size) * 100,
+                        99,
+                      );
+                      setFileProgress(Math.max(progress, 1));
+                    },
                   );
-                  completedChunks.add(chunkIndex);
-                  // Cap at 99% — 100% only after completeFile
-                  const progress = Math.min(
-                    (completedChunks.size / chunks) * 100,
-                    99,
-                  );
-                  setFileProgress(progress);
                 }),
               ),
             );
