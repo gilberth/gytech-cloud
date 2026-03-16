@@ -63,11 +63,11 @@ export const configVariables = {
     },
     zipCompressionLevel: {
       type: "number",
-      defaultValue: "9",
+      defaultValue: "1",
     },
     chunkSize: {
       type: "filesize",
-      defaultValue: "10000000",
+      defaultValue: "50000000",
       secret: false,
     },
     autoOpenShareModal: {
