@@ -7,7 +7,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import * as crypto from "crypto";
-import { createReadStream } from "fs";
+import { createReadStream, createWriteStream } from "fs";
+import { finished } from "stream/promises";
 import * as fs from "fs/promises";
 import * as mime from "mime-types";
 import { ConfigService } from "src/config/config.service";
@@ -30,90 +31,136 @@ export class LocalFileService {
     shareId: string,
   ) {
     if (!file.id) {
-      file.id = crypto.randomUUID();
+      throw new BadRequestException("File ID is required (generate client-side)");
     } else if (!isValidUUID(file.id)) {
       throw new BadRequestException("Invalid file ID format");
     }
 
+    // Validate chunk index
+    if (chunk.index < 0 || chunk.index >= chunk.total) {
+      throw new BadRequestException("Invalid chunk index");
+    }
+
     const share = await this.prisma.share.findUnique({
       where: { id: shareId },
-      include: { files: true, reverseShare: true },
     });
 
+    if (!share) throw new NotFoundException("Share not found");
     if (share.uploadLocked)
       throw new BadRequestException("Share is already completed");
 
-    let diskFileSize: number;
-    try {
-      diskFileSize = (
-        await fs.stat(`${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`)
-      ).size;
-    } catch {
-      diskFileSize = 0;
-    }
-
-    // If the sent chunk index and the expected chunk index doesn't match throw an error
-    const chunkSize = this.config.get("share.chunkSize");
-    const expectedChunkIndex = Math.ceil(diskFileSize / chunkSize);
-
-    if (expectedChunkIndex != chunk.index)
-      throw new BadRequestException({
-        message: "Unexpected chunk received",
-        error: "unexpected_chunk_index",
-        expectedChunkIndex,
-      });
-
-    // Check if there is enough space on the server
+    // Check disk space
     const space = await fs.statfs(SHARE_DIRECTORY);
     const availableSpace = space.bavail * space.bsize;
     if (availableSpace < data.byteLength) {
       throw new InternalServerErrorException("Not enough space on the server");
     }
 
-    // Check if share size limit is exceeded
-    const fileSizeSum = share.files.reduce(
-      (n, { size }) => n + parseInt(size),
+    // Ensure share directory exists
+    await fs.mkdir(`${SHARE_DIRECTORY}/${shareId}`, { recursive: true });
+
+    // Write chunk as individual file
+    const chunkPath = `${SHARE_DIRECTORY}/${shareId}/${file.id}.chunk-${chunk.index}`;
+    await fs.writeFile(chunkPath, data);
+
+    return { id: file.id, name: file.name };
+  }
+
+  async complete(
+    shareId: string,
+    fileId: string,
+    fileName: string,
+    totalChunks: number,
+  ) {
+    // Idempotency: if file record already exists, return it
+    const existing = await this.prisma.file.findUnique({
+      where: { id: fileId },
+    });
+    if (existing) {
+      return { id: existing.id, name: existing.name, size: existing.size };
+    }
+
+    const chunkDir = `${SHARE_DIRECTORY}/${shareId}`;
+
+    // Verify all chunks exist
+    for (let i = 0; i < totalChunks; i++) {
+      try {
+        await fs.access(`${chunkDir}/${fileId}.chunk-${i}`);
+      } catch {
+        throw new BadRequestException(
+          `Missing chunk ${i} of ${totalChunks}`,
+        );
+      }
+    }
+
+    // Stream-based assembly using pipe with { end: false }
+    const finalPath = `${chunkDir}/${fileId}`;
+    const writeStream = createWriteStream(finalPath);
+
+    for (let i = 0; i < totalChunks; i++) {
+      const chunkPath = `${chunkDir}/${fileId}.chunk-${i}`;
+      const readStream = createReadStream(chunkPath);
+      readStream.pipe(writeStream, { end: false });
+      await new Promise<void>((resolve, reject) => {
+        readStream.on("end", resolve);
+        readStream.on("error", reject);
+      });
+    }
+    writeStream.end();
+    await finished(writeStream);
+
+    // Verify assembled file size
+    const finalSize = (await fs.stat(finalPath)).size;
+
+    // Share size validation
+    const share = await this.prisma.share.findUnique({
+      where: { id: shareId },
+      include: { files: true, reverseShare: true },
+    });
+
+    const existingFilesSize = share.files.reduce(
+      (sum, f) => sum + parseInt(f.size),
       0,
     );
+    const totalShareSize = existingFilesSize + finalSize;
 
-    const shareSizeSum = fileSizeSum + diskFileSize + data.byteLength;
-
-    if (
-      shareSizeSum > this.config.get("share.maxSize") ||
-      (share.reverseShare?.maxShareSize &&
-        shareSizeSum > parseInt(share.reverseShare.maxShareSize))
-    ) {
+    if (totalShareSize > this.config.get("share.maxSize")) {
+      await fs.unlink(finalPath).catch(() => {});
       throw new HttpException(
         "Max share size exceeded",
         HttpStatus.PAYLOAD_TOO_LARGE,
       );
     }
 
-    await fs.appendFile(
-      `${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`,
-      data,
-    );
-
-    const isLastChunk = chunk.index == chunk.total - 1;
-    if (isLastChunk) {
-      await fs.rename(
-        `${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`,
-        `${SHARE_DIRECTORY}/${shareId}/${file.id}`,
+    if (
+      share.reverseShare?.maxShareSize &&
+      totalShareSize > parseInt(share.reverseShare.maxShareSize)
+    ) {
+      await fs.unlink(finalPath).catch(() => {});
+      throw new HttpException(
+        "Max share size exceeded",
+        HttpStatus.PAYLOAD_TOO_LARGE,
       );
-      const fileSize = (
-        await fs.stat(`${SHARE_DIRECTORY}/${shareId}/${file.id}`)
-      ).size;
-      await this.prisma.file.create({
-        data: {
-          id: file.id,
-          name: file.name,
-          size: fileSize.toString(),
-          share: { connect: { id: shareId } },
-        },
-      });
     }
 
-    return file;
+    // Delete chunk files (safe — final file is verified)
+    for (let i = 0; i < totalChunks; i++) {
+      await fs
+        .unlink(`${chunkDir}/${fileId}.chunk-${i}`)
+        .catch(() => {});
+    }
+
+    // Create DB record
+    await this.prisma.file.create({
+      data: {
+        id: fileId,
+        name: fileName,
+        size: finalSize.toString(),
+        share: { connect: { id: shareId } },
+      },
+    });
+
+    return { id: fileId, name: fileName, size: finalSize.toString() };
   }
 
   async get(shareId: string, fileId: string) {
