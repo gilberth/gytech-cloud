@@ -120,6 +120,20 @@ const uploadFile = async (
   ).data;
 };
 
+const completeFile = async (
+  shareId: string,
+  fileId: string,
+  fileName: string,
+  totalChunks: number,
+): Promise<{ id: string; name: string; size: string }> => {
+  return (
+    await api.post(`shares/${shareId}/files/${fileId}/complete`, {
+      fileName,
+      totalChunks,
+    })
+  ).data;
+};
+
 const createReverseShare = async (
   shareExpiration: string,
   maxShareSize: number,
@@ -172,6 +186,7 @@ export default {
   downloadFile,
   removeFile,
   uploadFile,
+  completeFile,
   setReverseShare,
   createReverseShare,
   getMyReverseShares,
