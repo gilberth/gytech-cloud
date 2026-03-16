@@ -11,7 +11,11 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { FileListItem, FileMetaData, FileUpload } from "../../types/File.type";
 import toast from "../../utils/toast.util";
-import { retryChunk, CHUNK_CONCURRENCY } from "../../utils/upload.util";
+import {
+  retryChunk,
+  CHUNK_CONCURRENCY,
+  calculateEta,
+} from "../../utils/upload.util";
 
 const promiseLimit = pLimit(3);
 let errorToastShown = false;
@@ -67,19 +71,21 @@ const EditableUpload = ({
         const fileId = crypto.randomUUID();
         const chunkLimit = pLimit(CHUNK_CONCURRENCY);
         const chunkBytesLoaded: Record<number, number> = {};
+        const uploadStartTime = Date.now();
 
-        const setFileProgress = (progress: number) => {
+        const setFileState = (progress: number, eta?: number) => {
           setUploadingFiles((files) =>
             files.map((file, callbackIndex) => {
               if (fileIndex == callbackIndex) {
                 file.uploadingProgress = progress;
+                file.uploadingEta = eta;
               }
               return file;
             }),
           );
         };
 
-        setFileProgress(1);
+        setFileState(1);
 
         let chunks = Math.ceil(file.size / chunkSize.current);
         if (chunks == 0) chunks = 1;
@@ -109,7 +115,12 @@ const EditableUpload = ({
                         (totalLoaded / file.size) * 100,
                         99,
                       );
-                      setFileProgress(Math.max(progress, 1));
+                      const eta = calculateEta(
+                        totalLoaded,
+                        file.size,
+                        uploadStartTime,
+                      );
+                      setFileState(Math.max(progress, 1), eta);
                     },
                   );
                 }),
@@ -122,9 +133,9 @@ const EditableUpload = ({
           await shareService.completeFile(shareId, fileId, file.name, chunks);
 
           // Only now set 100%
-          setFileProgress(100);
+          setFileState(100, 0);
         } catch (e) {
-          setFileProgress(-1);
+          setFileState(-1);
         }
       }),
     );

@@ -25,7 +25,11 @@ import shareService from "../../services/share.service";
 import { FileUpload } from "../../types/File.type";
 import { CreateShare, Share } from "../../types/share.type";
 import toast from "../../utils/toast.util";
-import { retryChunk, CHUNK_CONCURRENCY } from "../../utils/upload.util";
+import {
+  retryChunk,
+  CHUNK_CONCURRENCY,
+  calculateEta,
+} from "../../utils/upload.util";
 import { useRouter } from "next/router";
 
 const promiseLimit = pLimit(3);
@@ -114,19 +118,21 @@ const Upload = ({
         const fileId = crypto.randomUUID();
         const chunkLimit = pLimit(CHUNK_CONCURRENCY);
         const chunkBytesLoaded: Record<number, number> = {};
+        const uploadStartTime = Date.now();
 
-        const setFileProgress = (progress: number) => {
+        const setFileState = (progress: number, eta?: number) => {
           setFiles((files) =>
             files.map((file, callbackIndex) => {
               if (fileIndex == callbackIndex) {
                 file.uploadingProgress = progress;
+                file.uploadingEta = eta;
               }
               return file;
             }),
           );
         };
 
-        setFileProgress(1);
+        setFileState(1);
 
         let totalChunks = Math.ceil(file.size / chunkSize.current);
         if (totalChunks == 0) totalChunks = 1;
@@ -156,7 +162,12 @@ const Upload = ({
                         (totalLoaded / file.size) * 100,
                         99,
                       );
-                      setFileProgress(Math.max(progress, 1));
+                      const eta = calculateEta(
+                        totalLoaded,
+                        file.size,
+                        uploadStartTime,
+                      );
+                      setFileState(Math.max(progress, 1), eta);
                     },
                   );
                 }),
@@ -174,9 +185,9 @@ const Upload = ({
           );
 
           // Only now set 100% — safe for useEffect to trigger completeShare
-          setFileProgress(100);
+          setFileState(100, 0);
         } catch (e) {
-          setFileProgress(-1);
+          setFileState(-1);
         }
       }),
     );

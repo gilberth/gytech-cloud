@@ -1,8 +1,14 @@
 import { Box, Text, useMantineTheme } from "@mantine/core";
-import { TbCircleCheck } from "react-icons/tb";
-import { TbAlertTriangle } from "react-icons/tb";
+import { TbCircleCheck, TbAlertTriangle } from "react-icons/tb";
+import { formatEta } from "../../utils/upload.util";
 
-const UploadProgressIndicator = ({ progress }: { progress: number }) => {
+const UploadProgressIndicator = ({
+  progress,
+  eta,
+}: {
+  progress: number;
+  eta?: number;
+}) => {
   const theme = useMantineTheme();
   const isDark = theme.colorScheme === "dark";
 
@@ -17,6 +23,7 @@ const UploadProgressIndicator = ({ progress }: { progress: number }) => {
   const displayProgress = Math.round(progress);
   const victoriaColor = theme.colors.victoria?.[6] ?? theme.primaryColor;
   const trackColor = isDark ? theme.colors.dark[5] : theme.colors.gray[2];
+  const etaText = eta && isFinite(eta) && eta > 0 ? formatEta(eta) : "";
 
   return (
     <Box
@@ -24,7 +31,7 @@ const UploadProgressIndicator = ({ progress }: { progress: number }) => {
         display: "flex",
         alignItems: "center",
         gap: 8,
-        minWidth: 120,
+        minWidth: 160,
       }}
     >
       <Box
@@ -51,13 +58,14 @@ const UploadProgressIndicator = ({ progress }: { progress: number }) => {
         size="xs"
         weight={600}
         sx={{
-          minWidth: 36,
+          minWidth: etaText ? 80 : 36,
           textAlign: "right",
           fontVariantNumeric: "tabular-nums",
           color: isDark ? theme.colors.dark[1] : theme.colors.gray[7],
+          whiteSpace: "nowrap",
         }}
       >
-        {displayProgress}%
+        {displayProgress}%{etaText ? ` · ${etaText}` : ""}
       </Text>
     </Box>
   );

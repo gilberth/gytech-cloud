@@ -45,7 +45,10 @@ const FileListRow = ({
             </ActionIcon>
           )}
           {uploading && (
-            <UploadProgressIndicator progress={file.uploadingProgress} />
+            <UploadProgressIndicator
+              progress={file.uploadingProgress}
+              eta={file.uploadingEta}
+            />
           )}
           {restorable && (
             <ActionIcon
@@ -113,7 +116,7 @@ const FileList = <T extends FileListItem = FileListItem>({
           <th>
             <FormattedMessage id="upload.filelist.size" />
           </th>
-          <th style={{ width: 160 }}></th>
+          <th style={{ width: 200 }}></th>
         </tr>
       </thead>
       <tbody>{rows}</tbody>
