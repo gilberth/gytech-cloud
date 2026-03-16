@@ -21,6 +21,7 @@ import { FileSecurityGuard } from "./guard/fileSecurity.guard";
 import * as mime from "mime-types";
 import * as moment from "moment";
 import { PrismaService } from "src/prisma/prisma.service";
+import { CompleteFileDto } from "./dto/completeFile.dto";
 
 @Controller("shares/:shareId/files")
 export class FileController {
@@ -51,6 +52,22 @@ export class FileController {
       { index: parseInt(chunkIndex), total: parseInt(totalChunks) },
       { id, name },
       shareId,
+    );
+  }
+
+  @Post(":fileId/complete")
+  @SkipThrottle()
+  @UseGuards(CreateShareGuard, ShareOwnerGuard)
+  async completeFile(
+    @Param("shareId") shareId: string,
+    @Param("fileId") fileId: string,
+    @Body() body: CompleteFileDto,
+  ) {
+    return await this.fileService.completeFile(
+      shareId,
+      fileId,
+      body.fileName,
+      body.totalChunks,
     );
   }
 

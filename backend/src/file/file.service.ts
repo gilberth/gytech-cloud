@@ -41,6 +41,26 @@ export class FileService {
     return storageService.create(data, chunk, file, shareId);
   }
 
+  async completeFile(
+    shareId: string,
+    fileId: string,
+    fileName: string,
+    totalChunks: number,
+  ) {
+    const storageService = this.getStorageService();
+    // Only LocalFileService supports the complete method for now
+    // TODO: Add S3 parallel upload support in a future spec
+    if ("complete" in storageService) {
+      return (storageService as LocalFileService).complete(
+        shareId,
+        fileId,
+        fileName,
+        totalChunks,
+      );
+    }
+    throw new Error("Complete not supported for this storage provider");
+  }
+
   async get(shareId: string, fileId: string): Promise<File> {
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
