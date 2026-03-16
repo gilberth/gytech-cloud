@@ -45,7 +45,7 @@ export class S3FileService {
   ) {}
 
   async create(
-    data: string,
+    data: Buffer,
     chunk: { index: number; total: number },
     file: { id?: string; name: string },
     shareId: string,
@@ -56,7 +56,6 @@ export class S3FileService {
       throw new BadRequestException("Invalid file ID format");
     }
 
-    const buffer = Buffer.from(data, "base64");
     const key = `${this.getS3Path()}${shareId}/${file.name}`;
     const bucketName = this.config.get("s3.bucketName");
     const s3Instance = this.getS3Instance();
@@ -102,7 +101,7 @@ export class S3FileService {
           Key: key,
           PartNumber: partNumber,
           UploadId: uploadId,
-          Body: buffer,
+          Body: data,
         }),
       );
 

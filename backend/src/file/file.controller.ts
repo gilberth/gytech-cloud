@@ -40,7 +40,7 @@ export class FileController {
       chunkIndex: string;
       totalChunks: string;
     },
-    @Body() body: string,
+    @Body() body: Buffer,
     @Param("shareId") shareId: string,
   ) {
     const { id, name, chunkIndex, totalChunks } = query;

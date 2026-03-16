@@ -29,7 +29,7 @@ export class FileService {
   }
 
   async create(
-    data: string,
+    data: Buffer,
     chunk: { index: number; total: number },
     file: {
       id?: string;

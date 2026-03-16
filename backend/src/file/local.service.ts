@@ -24,7 +24,7 @@ export class LocalFileService {
   ) {}
 
   async create(
-    data: string,
+    data: Buffer,
     chunk: { index: number; total: number },
     file: { id?: string; name: string },
     shareId: string,
@@ -63,12 +63,10 @@ export class LocalFileService {
         expectedChunkIndex,
       });
 
-    const buffer = Buffer.from(data, "base64");
-
     // Check if there is enough space on the server
     const space = await fs.statfs(SHARE_DIRECTORY);
     const availableSpace = space.bavail * space.bsize;
-    if (availableSpace < buffer.byteLength) {
+    if (availableSpace < data.byteLength) {
       throw new InternalServerErrorException("Not enough space on the server");
     }
 
@@ -78,7 +76,7 @@ export class LocalFileService {
       0,
     );
 
-    const shareSizeSum = fileSizeSum + diskFileSize + buffer.byteLength;
+    const shareSizeSum = fileSizeSum + diskFileSize + data.byteLength;
 
     if (
       shareSizeSum > this.config.get("share.maxSize") ||
@@ -93,7 +91,7 @@ export class LocalFileService {
 
     await fs.appendFile(
       `${SHARE_DIRECTORY}/${shareId}/${file.id}.tmp-chunk`,
-      buffer,
+      data,
     );
 
     const isLastChunk = chunk.index == chunk.total - 1;
