@@ -1,7 +1,7 @@
 # Upload Performance Optimization — Design Spec
 
 **Date:** 2026-03-15
-**Status:** Draft (v2 — post-review)
+**Status:** Draft (v3 — second review)
 **Scope:** Optimize file upload pipeline for large files (900MB+) over tunneled connections (Pangolin)
 
 ## Problem Statement
@@ -56,6 +56,24 @@ Uploading a 900MB file is excessively slow due to:
 
 After all chunks are uploaded, the frontend calls this to trigger assembly. This avoids the race condition entirely — only one request triggers assembly.
 
+Guards: `@UseGuards(CreateShareGuard, ShareOwnerGuard)` — same as the chunk upload endpoint.
+
+**New DTO: `CompleteFileDto`**
+
+```typescript
+// backend/src/file/dto/completeFile.dto.ts
+import { IsString, IsInt, Min } from "class-validator";
+
+export class CompleteFileDto {
+  @IsString()
+  fileName: string;
+
+  @IsInt()
+  @Min(1)
+  totalChunks: number;
+}
+```
+
 **`local.service.ts` — new chunk storage:**
 
 ```
@@ -63,36 +81,86 @@ Current:  {shareId}/{fileId}.tmp-chunk  (append each chunk sequentially)
 New:      {shareId}/{fileId}.chunk-{index}  (one file per chunk, any order)
 ```
 
+**Required imports (add to `local.service.ts`):**
+```typescript
+import { createReadStream, createWriteStream } from "fs";
+import { finished } from "stream/promises";
+```
+
 **Chunk reception (`create` method):**
 1. Receive chunk with `chunkIndex` and `totalChunks` params
 2. Require `file.id` (client-generated UUID, reject if missing)
-3. Save as `{shareId}/{fileId}.chunk-{chunkIndex}` (atomic write)
-4. Return immediately — no assembly, no completeness check
-5. Remove the `expectedChunkIndex` sequential ordering validation
+3. Validate `chunkIndex` is a non-negative integer less than `totalChunks`
+4. Save as `{shareId}/{fileId}.chunk-{chunkIndex}` (atomic write)
+5. Return immediately — no assembly, no completeness check
+6. Remove the `expectedChunkIndex` sequential ordering validation
+7. Remove per-chunk share size validation (moved to `complete`)
 
 **Assembly (`complete` method — new):**
 ```typescript
 async complete(shareId: string, fileId: string, fileName: string, totalChunks: number) {
   const chunkDir = `${SHARE_DIRECTORY}/${shareId}`;
 
+  // Idempotency: if file record already exists, return it
+  const existing = await this.prisma.file.findUnique({ where: { id: fileId } });
+  if (existing) {
+    return { id: existing.id, name: existing.name, size: existing.size };
+  }
+
   // Verify all chunks exist
   for (let i = 0; i < totalChunks; i++) {
     await fs.access(`${chunkDir}/${fileId}.chunk-${i}`);
   }
 
-  // Stream-based assembly (handles backpressure correctly)
+  // Stream-based assembly using pipe with { end: false } for sequential concatenation
   const finalPath = `${chunkDir}/${fileId}`;
   const writeStream = createWriteStream(finalPath);
 
   for (let i = 0; i < totalChunks; i++) {
     const chunkPath = `${chunkDir}/${fileId}.chunk-${i}`;
-    await pipeline(createReadStream(chunkPath), writeStream, { end: false });
+    const readStream = createReadStream(chunkPath);
+    readStream.pipe(writeStream, { end: false });
+    await new Promise<void>((resolve, reject) => {
+      readStream.on("end", resolve);
+      readStream.on("error", reject);
+    });
   }
   writeStream.end();
   await finished(writeStream);
 
-  // Verify assembled file size matches sum of chunks
+  // Verify assembled file size
   const finalSize = (await fs.stat(finalPath)).size;
+
+  // --- Share size validation (moved from per-chunk to here) ---
+  const share = await this.prisma.share.findUnique({
+    where: { id: shareId },
+    include: { files: true, reverseShare: true },
+  });
+
+  const existingFilesSize = share.files.reduce(
+    (sum, f) => sum + parseInt(f.size), 0,
+  );
+  const totalShareSize = existingFilesSize + finalSize;
+
+  if (totalShareSize > this.config.get("share.maxSize")) {
+    // Clean up assembled file — share exceeds limit
+    await fs.unlink(finalPath).catch(() => {});
+    throw new HttpException("Max share size exceeded", HttpStatus.PAYLOAD_TOO_LARGE);
+  }
+
+  if (share.reverseShare?.maxShareSize &&
+      totalShareSize > parseInt(share.reverseShare.maxShareSize)) {
+    await fs.unlink(finalPath).catch(() => {});
+    throw new HttpException("Max share size exceeded", HttpStatus.PAYLOAD_TOO_LARGE);
+  }
+
+  // Check disk space
+  const space = await fs.statfs(SHARE_DIRECTORY);
+  const availableSpace = space.bavail * space.bsize;
+  if (availableSpace < 0) {
+    // Disk full edge case — file is already written but we warn
+    // (assembly already succeeded; this is a post-hoc check)
+  }
 
   // Only now delete chunk files (safe — final file is written and verified)
   for (let i = 0; i < totalChunks; i++) {
@@ -113,8 +181,7 @@ async complete(shareId: string, fileId: string, fileName: string, totalChunks: n
 }
 ```
 
-**Share size validation:**
-Move the max-size check to the `complete` endpoint. The frontend already knows the full file size — pass it as a parameter. Validate once against `share.maxSize` and `reverseShare.maxShareSize`, rather than per-chunk (which undercounts with parallel uploads).
+**Note on streaming approach:** `stream.pipeline()` does NOT support `{ end: false }` as an option. Instead, we use `.pipe(writeStream, { end: false })` with manual event awaiting per chunk. `.pipe()` correctly handles backpressure (pauses readable when writable buffer is full). The main trade-off vs `pipeline` is manual error handling, which is acceptable for short-lived chunk streams.
 
 #### Frontend changes (`upload/index.tsx` and `EditableUpload.tsx`)
 
@@ -150,9 +217,28 @@ await Promise.all(chunkPromises);
 await shareService.completeFile(shareId, fileId, file.name, totalChunks);
 ```
 
-**File-level concurrency:** Keep `pLimit(3)` for files. With 3 files × 3 chunks = max 9 concurrent HTTP requests.
+**File-level concurrency:** Keep `pLimit(3)` for files. With 3 files x 3 chunks = max 9 concurrent HTTP requests.
 
-**Fix existing bug:** Add `await` to `Promise.all(fileUploadPromises)` at line 170.
+**Fix existing bug:** Add `await` to `Promise.all(fileUploadPromises)` at `upload/index.tsx:170`. Note: `EditableUpload.tsx` already has the correct `await`.
+
+**New service method (`frontend/src/services/share.service.ts`):**
+```typescript
+const completeFile = async (
+  shareId: string,
+  fileId: string,
+  fileName: string,
+  totalChunks: number,
+): Promise<{ id: string; name: string; size: string }> => {
+  return (
+    await api.post(`shares/${shareId}/files/${fileId}/complete`, {
+      fileName,
+      totalChunks,
+    })
+  ).data;
+};
+```
+
+Add `completeFile` to the exported object at the bottom of the file.
 
 ### 3. Increase Default Chunk Size
 
@@ -163,11 +249,11 @@ Current:  chunkSize.defaultValue = "10000000"   (10 MB)
 New:      chunkSize.defaultValue = "50000000"    (50 MB)
 ```
 
-**Impact:** 900MB → 18 chunks instead of 90. With 3 parallel = ~6 round-trip batches.
+**Impact:** 900MB -> 18 chunks instead of 90. With 3 parallel = ~6 round-trip batches.
 
 **Note:** Only affects new installations. Existing users keep their DB-stored value. Document in release notes that users should update `share.chunkSize` to `50000000` in admin settings for better performance.
 
-**bodyParser.raw limit:** Already reads chunkSize dynamically in `main.ts:50-56`, so this propagates automatically.
+**bodyParser.raw limit:** Already reads chunkSize dynamically in `main.ts:50-56`, so this propagates automatically. Note: this applies the limit globally to all requests, not just file uploads. Acceptable for now; scoping to upload routes only is a future optimization.
 
 ### 4. Reduce ZIP Compression Level
 
@@ -217,7 +303,7 @@ const retryChunk = async (fn: () => Promise<void>, retries = MAX_RETRIES): Promi
 
 Each chunk upload is wrapped in `retryChunk()`. On failure:
 - Retry only the failed chunk (not the entire file)
-- Exponential backoff: 1s → 2s → 4s
+- Exponential backoff: 1s -> 2s -> 4s
 - After 3 failures on the same chunk, mark file as upload error
 - Remove the `unexpected_chunk_index` error handling (no longer needed with index-based storage)
 
@@ -230,9 +316,11 @@ Chunks from interrupted uploads (browser closed, network died) need cleanup:
 ```typescript
 @Cron(CronExpression.EVERY_HOUR)
 async cleanupOrphanChunks() {
-  // Scan SHARE_DIRECTORY for all .chunk-* files
-  // Check file mtime — if older than 1 hour, delete
+  // Scan SHARE_DIRECTORY for all share subdirectories
+  // Within each, find .chunk-* files using glob pattern
+  // Check file mtime via fs.stat() — if older than 1 hour, delete
   // Also clean legacy .tmp-chunk files from pre-migration uploads
+  // Log each deletion with shareId and filename for debugging
 }
 ```
 
@@ -243,7 +331,7 @@ async cleanupOrphanChunks() {
 - Log deletions for debugging
 - Do NOT touch share DB records — orphan chunks are pre-file-creation
 
-**Prerequisite:** Verify `ScheduleModule.forRoot()` is registered in `app.module.ts` (it should be, since the codebase already uses `@nestjs/schedule`).
+**Prerequisite:** `ScheduleModule.forRoot()` is already registered in `app.module.ts` (used by existing `@nestjs/schedule` features).
 
 ## S3 Service — Scoped Out
 
@@ -258,14 +346,15 @@ The S3 service (`s3.service.ts`) has a fundamentally different architecture:
 
 | File | Change |
 |------|--------|
-| `backend/src/file/local.service.ts` | Buffer type, index-based chunk storage, new `complete()` method with streaming assembly |
+| `backend/src/file/local.service.ts` | Buffer type, index-based chunk storage, new `complete()` method with streaming assembly, share size validation |
 | `backend/src/file/s3.service.ts` | Buffer type fix only (no parallel changes) |
 | `backend/src/file/file.service.ts` | Buffer type in facade `create()`, new `completeFile()` facade method, orphan cleanup cron |
-| `backend/src/file/file.controller.ts` | `@Body()` type to Buffer, new `POST :fileId/complete` endpoint |
+| `backend/src/file/file.controller.ts` | `@Body()` type to Buffer, new `POST :fileId/complete` endpoint with guards |
+| `backend/src/file/dto/completeFile.dto.ts` | **New file** — DTO for complete endpoint validation |
 | `backend/src/main.ts` | No change needed (already dynamic) |
-| `backend/prisma/seed/config.seed.ts` | chunkSize → 50MB, zipCompressionLevel → 1 |
+| `backend/prisma/seed/config.seed.ts` | chunkSize -> 50MB, zipCompressionLevel -> 1 |
 | `frontend/src/pages/upload/index.tsx` | Client-side file ID, parallel chunks, retry logic, `await` fix, call `completeFile` |
-| `frontend/src/components/upload/EditableUpload.tsx` | Same parallel chunks + retry changes |
+| `frontend/src/components/upload/EditableUpload.tsx` | Same parallel chunks + retry changes (already has correct `await`) |
 | `frontend/src/services/share.service.ts` | New `completeFile()` API method |
 
 ## Migration & Compatibility
@@ -278,10 +367,13 @@ The S3 service (`s3.service.ts`) has a fundamentally different architecture:
 
 ## Testing Plan
 
-1. **Integrity:** Upload files of various sizes (1MB, 100MB, 500MB), verify sha256sum matches original
+1. **Integrity:** Upload files of various sizes (0 bytes, 1MB, 100MB, 500MB), verify sha256sum matches original
 2. **Parallel correctness:** Upload 3 files simultaneously, verify no chunk mixing between files
 3. **Error recovery:** Kill upload mid-way (close browser tab), restart — verify retry logic works per-chunk
 4. **Assembly verification:** Confirm assembled file size matches sum of chunk sizes
-5. **Orphan cleanup:** Create orphan chunks, advance time, verify cron deletes them
-6. **Regression:** Run existing Newman system tests (`npm run test:system`)
-7. **S3 smoke test:** If S3 is configured, verify single-file upload still works (sequential, type fix only)
+5. **Size limit enforcement:** Upload file exceeding `share.maxSize`, verify rejection at `complete` endpoint
+6. **Idempotency:** Call `complete` endpoint twice for same file, verify second call returns existing record
+7. **Orphan cleanup:** Create orphan chunks, advance time, verify cron deletes them
+8. **Zero-byte files:** Upload an empty file, verify it creates correctly through the new pipeline
+9. **Regression:** Run existing Newman system tests (`npm run test:system`)
+10. **S3 smoke test:** If S3 is configured, verify single-file upload still works (sequential, type fix only)
