@@ -1,6 +1,5 @@
 import { Button, Group } from "@mantine/core";
 import { cleanNotifications } from "@mantine/notifications";
-import { AxiosError } from "axios";
 import { useRouter } from "next/router";
 import pLimit from "p-limit";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,6 +11,7 @@ import useTranslate from "../../hooks/useTranslate.hook";
 import shareService from "../../services/share.service";
 import { FileListItem, FileMetaData, FileUpload } from "../../types/File.type";
 import toast from "../../utils/toast.util";
+import { retryChunk, CHUNK_CONCURRENCY } from "../../utils/upload.util";
 
 const promiseLimit = pLimit(3);
 let errorToastShown = false;
@@ -63,9 +63,10 @@ const EditableUpload = ({
 
   const uploadFiles = async (files: FileUpload[]) => {
     const fileUploadPromises = files.map(async (file, fileIndex) =>
-      // Limit the number of concurrent uploads to 3
       promiseLimit(async () => {
-        let fileId: string | undefined;
+        const fileId = crypto.randomUUID();
+        const chunkLimit = pLimit(CHUNK_CONCURRENCY);
+        const completedChunks = new Set<number>();
 
         const setFileProgress = (progress: number) => {
           setUploadingFiles((files) =>
@@ -81,48 +82,49 @@ const EditableUpload = ({
         setFileProgress(1);
 
         let chunks = Math.ceil(file.size / chunkSize.current);
+        if (chunks == 0) chunks = 1;
 
-        // If the file is 0 bytes, we still need to upload 1 chunk
-        if (chunks == 0) chunks++;
-
-        for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
-          const from = chunkIndex * chunkSize.current;
-          const to = from + chunkSize.current;
-          const blob = file.slice(from, to);
-          try {
-            await shareService
-              .uploadFile(
-                shareId,
-                blob,
-                {
-                  id: fileId,
-                  name: file.name,
-                },
-                chunkIndex,
-                chunks,
-              )
-              .then((response) => {
-                fileId = response.id;
-              });
-
-            setFileProgress(((chunkIndex + 1) / chunks) * 100);
-          } catch (e) {
-            if (
-              e instanceof AxiosError &&
-              e.response?.data.error == "unexpected_chunk_index"
-            ) {
-              // Retry with the expected chunk index
-              chunkIndex = e.response!.data!.expectedChunkIndex - 1;
-              continue;
-            } else {
-              setFileProgress(-1);
-              // Retry after 5 seconds
-              await new Promise((resolve) => setTimeout(resolve, 5000));
-              chunkIndex = -1;
-
-              continue;
-            }
+        try {
+          const chunkPromises = [];
+          for (let chunkIndex = 0; chunkIndex < chunks; chunkIndex++) {
+            chunkPromises.push(
+              chunkLimit(() =>
+                retryChunk(async () => {
+                  const from = chunkIndex * chunkSize.current;
+                  const to = from + chunkSize.current;
+                  const blob = file.slice(from, to);
+                  await shareService.uploadFile(
+                    shareId,
+                    blob,
+                    { id: fileId, name: file.name },
+                    chunkIndex,
+                    chunks,
+                  );
+                  completedChunks.add(chunkIndex);
+                  // Cap at 99% — 100% only after completeFile
+                  const progress = Math.min(
+                    (completedChunks.size / chunks) * 100,
+                    99,
+                  );
+                  setFileProgress(progress);
+                }),
+              ),
+            );
           }
+          await Promise.all(chunkPromises);
+
+          // Trigger server-side assembly
+          await shareService.completeFile(
+            shareId,
+            fileId,
+            file.name,
+            chunks,
+          );
+
+          // Only now set 100%
+          setFileProgress(100);
+        } catch (e) {
+          setFileProgress(-1);
         }
       }),
     );
