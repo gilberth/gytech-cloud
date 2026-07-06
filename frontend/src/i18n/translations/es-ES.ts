@@ -187,6 +187,7 @@ export default {
   "account.reverseShares.table.max-size": "Tamaño máximo del compartido",
   "account.reverseShares.table.expires": "Expira en",
   "account.reverseShares.modal.reverse-share-link": "Enlace de compartición inversa",
+  "account.reverseShares.modal.curl-command.label": "Comando curl (para subir desde una terminal, sin necesidad de navegador)",
   "account.reverseShares.modal.delete.title": "Eliminar compartición inversa",
   "account.reverseShares.modal.delete.description": "¿Seguro que quieres eliminar esta compartición inversa? Si lo haces, todos los archivos asociados también serán eliminados.",
   // END /account/reverseShares
