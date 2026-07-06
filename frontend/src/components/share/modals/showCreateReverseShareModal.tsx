@@ -117,9 +117,14 @@ const Body = ({
         values.simplified,
         values.publicAccess,
       )
-      .then(({ link }) => {
+      .then(({ link, apiUploadUrl }) => {
         modals.closeAll();
-        showCompletedReverseShareModal(modals, link, getReverseShares);
+        showCompletedReverseShareModal(
+          modals,
+          link,
+          apiUploadUrl,
+          getReverseShares,
+        );
       })
       .catch(toast.axiosError);
   });

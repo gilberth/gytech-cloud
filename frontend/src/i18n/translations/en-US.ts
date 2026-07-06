@@ -226,6 +226,8 @@ export default {
   "account.reverseShares.table.expires": "Expires at",
 
   "account.reverseShares.modal.reverse-share-link": "Reverse share link",
+  "account.reverseShares.modal.curl-command.label":
+    "Curl command (for uploading from a terminal, no browser needed)",
 
   "account.reverseShares.modal.delete.title": "Delete reverse share",
   "account.reverseShares.modal.delete.description":

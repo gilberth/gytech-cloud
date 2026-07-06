@@ -6,7 +6,11 @@ import { TbCheck, TbCopy } from "react-icons/tb";
 import useTranslate from "../../hooks/useTranslate.hook";
 import toast from "../../utils/toast.util";
 
-function CopyTextField(props: { link: string }) {
+function CopyTextField(props: {
+  link: string;
+  label?: string;
+  hideOpenLink?: boolean;
+}) {
   const clipboard = useClipboard({ timeout: 500 });
   const t = useTranslate();
 
@@ -29,7 +33,7 @@ function CopyTextField(props: { link: string }) {
   return (
     <TextInput
       readOnly
-      label={t("common.text.link")}
+      label={props.label ?? t("common.text.link")}
       variant="filled"
       value={props.link}
       onClick={() => {
@@ -38,21 +42,23 @@ function CopyTextField(props: { link: string }) {
           setTextClicked(true);
         }
       }}
-      rightSectionWidth={62}
+      rightSectionWidth={props.hideOpenLink ? 31 : 62}
       rightSection={
         <>
-          <Tooltip
-            label={t("common.text.navigate-to-link")}
-            position="top"
-            offset={-2}
-            openDelay={200}
-          >
-            <a href={props.link}>
-              <ActionIcon>
-                <IoOpenOutline />
-              </ActionIcon>
-            </a>
-          </Tooltip>
+          {!props.hideOpenLink && (
+            <Tooltip
+              label={t("common.text.navigate-to-link")}
+              position="top"
+              offset={-2}
+              openDelay={200}
+            >
+              <a href={props.link}>
+                <ActionIcon>
+                  <IoOpenOutline />
+                </ActionIcon>
+              </a>
+            </Tooltip>
+          )}
 
           {window.isSecureContext && (
             <Tooltip
