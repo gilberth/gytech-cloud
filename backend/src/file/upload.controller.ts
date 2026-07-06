@@ -82,6 +82,7 @@ export class UploadController {
         shareId,
         maxBytes,
       );
+      await this.shareService.complete(shareId, token);
     } catch (e) {
       await this.fileService.deleteAllFiles(shareId).catch(() => {});
       await this.prisma.share.delete({ where: { id: shareId } }).catch(() => {});
@@ -92,8 +93,6 @@ export class UploadController {
       res.status(status).type("text/plain").send(`${message}\n`);
       return;
     }
-
-    await this.shareService.complete(shareId, token);
 
     const appUrl = this.config.get("general.appUrl");
     res
