@@ -9,6 +9,8 @@
 
 ### Features
 
+* **upload:** new `PUT /api/upload/:token/:filename` endpoint lets you upload a file with a single `curl -T file "<apiUploadUrl>"` command using an existing Reverse Share token — no login, no browser, no script needed
+* **reverseShare:** creation response and UI now include a ready-to-copy curl command (`apiUploadUrl`) alongside the existing web link
 * **upload:** horizontal progress bar with percentage text replaces tiny ring indicator
 * **upload:** ETA countdown shows estimated time remaining during uploads
 * **file:** new `POST /shares/:shareId/files/:fileId/complete` endpoint for client-driven chunk assembly
