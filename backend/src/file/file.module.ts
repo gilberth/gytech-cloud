@@ -8,10 +8,16 @@ import { FileService } from "./file.service";
 import { LocalFileService } from "./local.service";
 import { PublicFileController } from "./public-file.controller";
 import { S3FileService } from "./s3.service";
+import { UploadController } from "./upload.controller";
 
 @Module({
-  imports: [JwtModule.register({}), ReverseShareModule, ShareModule, EmailModule],
-  controllers: [FileController, PublicFileController],
+  imports: [
+    JwtModule.register({}),
+    ReverseShareModule,
+    ShareModule,
+    EmailModule,
+  ],
+  controllers: [FileController, PublicFileController, UploadController],
   providers: [FileService, LocalFileService, S3FileService],
   exports: [FileService],
 })

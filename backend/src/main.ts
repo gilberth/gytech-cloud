@@ -48,6 +48,7 @@ async function bootstrap() {
   const config = app.get<ConfigService>(ConfigService);
 
   app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith("/api/upload/")) return next();
     const chunkSize = config.get("share.chunkSize");
     bodyParser.raw({
       type: "application/octet-stream",
