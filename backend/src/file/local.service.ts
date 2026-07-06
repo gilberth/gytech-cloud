@@ -8,14 +8,14 @@ import {
 } from "@nestjs/common";
 import * as crypto from "crypto";
 import { createReadStream, createWriteStream } from "fs";
-import { finished } from "stream/promises";
+import { finished, pipeline } from "stream/promises";
 import * as fs from "fs/promises";
 import * as mime from "mime-types";
 import { ConfigService } from "src/config/config.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { validate as isValidUUID } from "uuid";
 import { SHARE_DIRECTORY } from "../constants";
-import { Readable } from "stream";
+import { Readable, Transform } from "stream";
 
 @Injectable()
 export class LocalFileService {
@@ -175,31 +175,29 @@ export class LocalFileService {
     let bytesWritten = 0;
     let limitExceeded = false;
 
-    await new Promise<void>((resolve, reject) => {
-      stream.on("data", (buf: Buffer) => {
-        bytesWritten += buf.byteLength;
-        if (bytesWritten > maxBytes && !limitExceeded) {
+    const trackBytes = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        bytesWritten += chunk.byteLength;
+        if (bytesWritten > maxBytes) {
           limitExceeded = true;
-          stream.destroy();
-          writeStream.destroy();
+          callback(new Error("Max share size exceeded"));
+          return;
         }
-      });
-      stream.on("error", (err) => {
-        if (!limitExceeded) reject(err);
-      });
-      writeStream.on("error", (err) => {
-        if (!limitExceeded) reject(err);
-      });
-      writeStream.on("close", () => resolve());
-      stream.pipe(writeStream);
+        callback(null, chunk);
+      },
     });
 
-    if (limitExceeded) {
+    try {
+      await pipeline(stream, trackBytes, writeStream);
+    } catch (err) {
       await fs.unlink(finalPath).catch(() => {});
-      throw new HttpException(
-        "Max share size exceeded",
-        HttpStatus.PAYLOAD_TOO_LARGE,
-      );
+      if (limitExceeded) {
+        throw new HttpException(
+          "Max share size exceeded",
+          HttpStatus.PAYLOAD_TOO_LARGE,
+        );
+      }
+      throw err;
     }
 
     await this.prisma.file.create({
