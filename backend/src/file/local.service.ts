@@ -161,6 +161,59 @@ export class LocalFileService {
     return { id: fileId, name: fileName, size: finalSize.toString() };
   }
 
+  async createFromStream(
+    stream: Readable,
+    file: { id: string; name: string },
+    shareId: string,
+    maxBytes: number,
+  ) {
+    await fs.mkdir(`${SHARE_DIRECTORY}/${shareId}`, { recursive: true });
+
+    const finalPath = `${SHARE_DIRECTORY}/${shareId}/${file.id}`;
+    const writeStream = createWriteStream(finalPath);
+
+    let bytesWritten = 0;
+    let limitExceeded = false;
+
+    await new Promise<void>((resolve, reject) => {
+      stream.on("data", (buf: Buffer) => {
+        bytesWritten += buf.byteLength;
+        if (bytesWritten > maxBytes && !limitExceeded) {
+          limitExceeded = true;
+          stream.destroy();
+          writeStream.destroy();
+        }
+      });
+      stream.on("error", (err) => {
+        if (!limitExceeded) reject(err);
+      });
+      writeStream.on("error", (err) => {
+        if (!limitExceeded) reject(err);
+      });
+      writeStream.on("close", () => resolve());
+      stream.pipe(writeStream);
+    });
+
+    if (limitExceeded) {
+      await fs.unlink(finalPath).catch(() => {});
+      throw new HttpException(
+        "Max share size exceeded",
+        HttpStatus.PAYLOAD_TOO_LARGE,
+      );
+    }
+
+    await this.prisma.file.create({
+      data: {
+        id: file.id,
+        name: file.name,
+        size: bytesWritten.toString(),
+        share: { connect: { id: shareId } },
+      },
+    });
+
+    return { id: file.id, name: file.name, size: bytesWritten.toString() };
+  }
+
   async get(shareId: string, fileId: string) {
     const fileMetaData = await this.prisma.file.findUnique({
       where: { id: fileId },

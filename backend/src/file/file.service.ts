@@ -67,6 +67,24 @@ export class FileService {
     throw new Error("Complete not supported for this storage provider");
   }
 
+  async createFromStream(
+    stream: Readable,
+    file: { id: string; name: string },
+    shareId: string,
+    maxBytes: number,
+  ) {
+    const storageService = this.getStorageService();
+    if ("createFromStream" in storageService) {
+      return (storageService as LocalFileService).createFromStream(
+        stream,
+        file,
+        shareId,
+        maxBytes,
+      );
+    }
+    throw new Error("createFromStream not supported for this storage provider");
+  }
+
   async get(shareId: string, fileId: string): Promise<File> {
     const share = await this.prisma.share.findFirst({
       where: { id: shareId },
