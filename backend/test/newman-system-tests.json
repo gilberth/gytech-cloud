@@ -945,6 +945,134 @@
 			]
 		},
 		{
+			"name": "Curl Upload",
+			"item": [
+				{
+					"name": "Create reverse share for curl upload test",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.collectionVariables.set(\"curlUploadToken\", pm.response.json().token);",
+									"",
+									"pm.test(\"Response has apiUploadUrl\", () => {",
+									"    const responseBody = pm.response.json();",
+									"    pm.expect(responseBody).to.have.property(\"apiUploadUrl\");",
+									"    pm.expect(responseBody.apiUploadUrl).to.include(responseBody.token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"shareExpiration\": \"1-days\",\n    \"maxShareSize\": \"1000000\",\n    \"maxUseCount\": 1,\n    \"sendEmailNotification\": false,\n    \"simplified\": true,\n    \"publicAccess\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{API_URL}}/reverseShares",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"reverseShares"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload file via curl-style PUT",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", () => {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Body is a plain-text share link\", () => {",
+									"    pm.expect(pm.response.text()).to.include(\"/s/\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "This is a test file used for curl-style uploading in the system test."
+						},
+						"url": {
+							"raw": "{{API_URL}}/upload/{{curlUploadToken}}/curl-test-file.txt",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"upload",
+								"{{curlUploadToken}}",
+								"curl-test-file.txt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Second upload with exhausted token fails",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 403\", () => {",
+									"    pm.response.to.have.status(403);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "This second upload should be rejected because maxUseCount was 1."
+						},
+						"url": {
+							"raw": "{{API_URL}}/upload/{{curlUploadToken}}/curl-test-file-2.txt",
+							"host": [
+								"{{API_URL}}"
+							],
+							"path": [
+								"upload",
+								"{{curlUploadToken}}",
+								"curl-test-file-2.txt"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Get Share",
 			"item": [
 				{
@@ -1259,6 +1387,11 @@
 		{
 			"key": "API_URL",
 			"value": "http://localhost:8080/api",
+			"type": "string"
+		},
+		{
+			"key": "curlUploadToken",
+			"value": "",
 			"type": "string"
 		}
 	]
