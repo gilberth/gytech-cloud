@@ -33,20 +33,40 @@ export async function middleware(request: NextRequest) {
   try {
     const response = await fetch(`${apiUrl}/api/configs`, {
       // Add timeout to prevent hanging
-      signal: AbortSignal.timeout(5000)
+      signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     config = await response.json();
   } catch (error) {
-    console.warn('Config fetch failed, using fallback:', error);
+    console.warn("Config fetch failed, using fallback:", error);
     // Fallback config when backend is not ready
     config = [
-      { key: "share.allowRegistration", value: "true", defaultValue: "true", type: "boolean" },
-      { key: "share.allowUnauthenticatedShares", value: "false", defaultValue: "false", type: "boolean" },
-      { key: "smtp.enabled", value: "false", defaultValue: "false", type: "boolean" },
-      { key: "legal.enabled", value: "false", defaultValue: "false", type: "boolean" }
+      {
+        key: "share.allowRegistration",
+        value: "true",
+        defaultValue: "true",
+        type: "boolean",
+      },
+      {
+        key: "share.allowUnauthenticatedShares",
+        value: "false",
+        defaultValue: "false",
+        type: "boolean",
+      },
+      {
+        key: "smtp.enabled",
+        value: "false",
+        defaultValue: "false",
+        type: "boolean",
+      },
+      {
+        key: "legal.enabled",
+        value: "false",
+        defaultValue: "false",
+        type: "boolean",
+      },
     ];
   }
 

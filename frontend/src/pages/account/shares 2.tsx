@@ -18,7 +18,19 @@ import { useModals } from "@mantine/modals";
 import moment from "moment";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { TbEdit, TbInfoCircle, TbLink, TbLock, TbTrash, TbFile, TbFileText, TbPhoto, TbVideo, TbMusic, TbFileZip } from "react-icons/tb";
+import {
+  TbEdit,
+  TbInfoCircle,
+  TbLink,
+  TbLock,
+  TbTrash,
+  TbFile,
+  TbFileText,
+  TbPhoto,
+  TbVideo,
+  TbMusic,
+  TbFileZip,
+} from "react-icons/tb";
 import { FormattedMessage } from "react-intl";
 import Meta from "../../components/Meta";
 import showShareInformationsModal from "../../components/account/showShareInformationsModal";

@@ -33,7 +33,7 @@ export class ShareService {
     private jwtService: JwtService,
     private reverseShareService: ReverseShareService,
     private clamScanService: ClamScanService,
-  ) { }
+  ) {}
 
   async create(share: CreateShareDTO, user?: User, reverseShareToken?: string) {
     if (!(await this.isShareIdAvailable(share.id)).isAvailable)
@@ -63,7 +63,7 @@ export class ShareService {
         maxExpiration.value !== 0 &&
         (expiresNever ||
           parsedExpiration >
-          moment().add(maxExpiration.value, maxExpiration.unit).toDate())
+            moment().add(maxExpiration.value, maxExpiration.unit).toDate())
       ) {
         throw new BadRequestException(
           "Expiration date exceeds maximum expiration date",
@@ -180,7 +180,7 @@ export class ShareService {
 
     const notifyReverseShareCreator = share.reverseShare
       ? this.config.get("smtp.enabled") &&
-      share.reverseShare.sendEmailNotification
+        share.reverseShare.sendEmailNotification
       : undefined;
 
     if (notifyReverseShareCreator) {
@@ -331,7 +331,9 @@ export class ShareService {
       if (updateData.expiration === "never") {
         updateShare.expiration = new Date(0);
       } else {
-        updateShare.expiration = parseRelativeDateToAbsolute(updateData.expiration);
+        updateShare.expiration = parseRelativeDateToAbsolute(
+          updateData.expiration,
+        );
       }
     }
 
@@ -340,7 +342,9 @@ export class ShareService {
       hasSecurityUpdates = true;
 
       if (updateData.security.password) {
-        updateSecurity.password = await argon.hash(updateData.security.password);
+        updateSecurity.password = await argon.hash(
+          updateData.security.password,
+        );
       }
 
       if (updateData.security.maxViews !== undefined) {
@@ -356,11 +360,11 @@ export class ShareService {
         ...(hasSecurityUpdates && {
           security: existingShare.security
             ? {
-              update: updateSecurity,
-            }
+                update: updateSecurity,
+              }
             : {
-              create: updateSecurity,
-            },
+                create: updateSecurity,
+              },
         }),
       },
     });

@@ -13,9 +13,9 @@ const showFilePreviewModal = (
     size: "xl",
     title: file.name,
     children: (
-      <FilePreview 
-        shareId={shareId} 
-        fileId={file.id} 
+      <FilePreview
+        shareId={shareId}
+        fileId={file.id}
         mimeType={mimeType}
         fileName={file.name}
         fileSize={parseInt(file.size)}

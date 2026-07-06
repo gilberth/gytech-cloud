@@ -62,10 +62,13 @@ const FilePreview = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log(`[DEBUG] FilePreview useEffect - shareId: ${shareId}, fileId: ${fileId}`);
-    
+    console.log(
+      `[DEBUG] FilePreview useEffect - shareId: ${shareId}, fileId: ${fileId}`,
+    );
+
     // Fetch file metadata for enhanced preview
-    api.get(`/shares/${shareId}/files/${fileId}/metadata`)
+    api
+      .get(`/shares/${shareId}/files/${fileId}/metadata`)
       .then((response) => {
         console.log(`[DEBUG] Metadata response:`, response.data);
         setMetadata(response.data);
@@ -282,13 +285,17 @@ const TextPreview = () => {
       <Center style={{ minHeight: 200 }}>
         <Stack align="center" spacing="sm">
           <Loader size="sm" />
-          <Text size="sm" color="dimmed">Loading text...</Text>
+          <Text size="sm" color="dimmed">
+            Loading text...
+          </Text>
         </Stack>
       </Center>
     );
   }
 
-  const isMarkdown = fileName?.toLowerCase().endsWith('.md') || fileName?.toLowerCase().endsWith('.markdown');
+  const isMarkdown =
+    fileName?.toLowerCase().endsWith(".md") ||
+    fileName?.toLowerCase().endsWith(".markdown");
 
   if (isMarkdown) {
     const options: MarkdownToJSX.Options = {
@@ -329,7 +336,10 @@ const TextPreview = () => {
         maxHeight: "500px",
         overflow: "auto",
         padding: "1rem",
-        backgroundColor: colorScheme === "dark" ? "rgba(50, 50, 50, 0.3)" : "rgba(220, 220, 220, 0.3)",
+        backgroundColor:
+          colorScheme === "dark"
+            ? "rgba(50, 50, 50, 0.3)"
+            : "rgba(220, 220, 220, 0.3)",
         borderRadius: "8px",
         fontFamily: "monospace",
         fontSize: "14px",
@@ -349,7 +359,8 @@ const PdfPreview = () => {
     return (
       <Alert color="orange" title="PDF Preview Not Available">
         <Text size="sm" mb="md">
-          This PDF cannot be previewed inline. Please download or open in a new tab.
+          This PDF cannot be previewed inline. Please download or open in a new
+          tab.
         </Text>
       </Alert>
     );
@@ -380,25 +391,25 @@ const CodePreview = () => {
   const { colorScheme } = useMantineTheme();
 
   const getLanguageFromFileName = (fileName: string = ""): string => {
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const ext = fileName.split(".").pop()?.toLowerCase() || "";
     const languageMap: Record<string, string> = {
-      'js': 'JavaScript',
-      'jsx': 'JSX',
-      'ts': 'TypeScript',
-      'tsx': 'TSX',
-      'py': 'Python',
-      'java': 'Java',
-      'cpp': 'C++',
-      'c': 'C',
-      'h': 'C Header',
-      'css': 'CSS',
-      'html': 'HTML',
-      'xml': 'XML',
-      'json': 'JSON',
-      'yaml': 'YAML',
-      'yml': 'YAML',
+      js: "JavaScript",
+      jsx: "JSX",
+      ts: "TypeScript",
+      tsx: "TSX",
+      py: "Python",
+      java: "Java",
+      cpp: "C++",
+      c: "C",
+      h: "C Header",
+      css: "CSS",
+      html: "HTML",
+      xml: "XML",
+      json: "JSON",
+      yaml: "YAML",
+      yml: "YAML",
     };
-    return languageMap[ext] || 'Text';
+    return languageMap[ext] || "Text";
   };
 
   const copyToClipboard = async () => {
@@ -407,7 +418,7 @@ const CodePreview = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy code:', err);
+      console.error("Failed to copy code:", err);
     }
   };
 
@@ -430,7 +441,9 @@ const CodePreview = () => {
       <Center style={{ minHeight: 200 }}>
         <Stack align="center" spacing="sm">
           <Loader size="sm" />
-          <Text size="sm" color="dimmed">Loading code...</Text>
+          <Text size="sm" color="dimmed">
+            Loading code...
+          </Text>
         </Stack>
       </Center>
     );
@@ -439,12 +452,20 @@ const CodePreview = () => {
   return (
     <Box>
       {/* Code header with language and copy button */}
-      <Group position="apart" mb="xs" p="xs" sx={(theme) => ({
-        backgroundColor: colorScheme === 'dark' ? theme.colors.dark[6] : theme.colors.gray[1],
-        borderRadius: '8px 8px 0 0',
-        border: `1px solid ${colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-        borderBottom: 'none',
-      })}>
+      <Group
+        position="apart"
+        mb="xs"
+        p="xs"
+        sx={(theme) => ({
+          backgroundColor:
+            colorScheme === "dark"
+              ? theme.colors.dark[6]
+              : theme.colors.gray[1],
+          borderRadius: "8px 8px 0 0",
+          border: `1px solid ${colorScheme === "dark" ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+          borderBottom: "none",
+        })}
+      >
         <Badge variant="light" size="sm">
           {getLanguageFromFileName(fileName)}
         </Badge>
@@ -453,12 +474,12 @@ const CodePreview = () => {
           size="xs"
           leftIcon={<TbCopy size={14} />}
           onClick={copyToClipboard}
-          color={copied ? 'green' : 'gray'}
+          color={copied ? "green" : "gray"}
         >
-          {copied ? 'Copied!' : 'Copy'}
+          {copied ? "Copied!" : "Copy"}
         </Button>
       </Group>
-      
+
       {/* Code content */}
       <Box
         style={{
@@ -467,17 +488,20 @@ const CodePreview = () => {
           backgroundColor: colorScheme === "dark" ? "#1a1a1a" : "#f8f9fa",
           border: `1px solid ${colorScheme === "dark" ? "#333" : "#e9ecef"}`,
           borderRadius: "0 0 8px 8px",
-          fontFamily: "'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
+          fontFamily:
+            "'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace",
           fontSize: "14px",
           lineHeight: "1.5",
         }}
       >
-        <pre style={{ 
-          margin: 0, 
-          padding: "1rem", 
-          whiteSpace: "pre-wrap",
-          color: colorScheme === "dark" ? "#f8f8f2" : "#212529"
-        }}>
+        <pre
+          style={{
+            margin: 0,
+            padding: "1rem",
+            whiteSpace: "pre-wrap",
+            color: colorScheme === "dark" ? "#f8f8f2" : "#212529",
+          }}
+        >
           {code}
         </pre>
       </Box>
@@ -490,14 +514,15 @@ const OfficePreview = () => {
   const [useGoogleViewer, setUseGoogleViewer] = useState(true);
 
   const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-    `${window.location.origin}/api/shares/${shareId}/files/${fileId}?download=false`
+    `${window.location.origin}/api/shares/${shareId}/files/${fileId}?download=false`,
   )}&embedded=true`;
 
   if (!useGoogleViewer) {
     return (
       <Alert color="blue" title="Office Document Preview">
         <Text size="sm" mb="md">
-          This Office document cannot be previewed inline. Please download the file to view it.
+          This Office document cannot be previewed inline. Please download the
+          file to view it.
         </Text>
         <Text size="xs" color="dimmed">
           Supported formats: .doc, .docx, .xls, .xlsx, .ppt, .pptx
@@ -529,10 +554,12 @@ const UnSupportedFile = () => {
       <Stack align="center" spacing="md">
         <Alert color="yellow" title="Preview Not Available">
           <Text size="sm">
-            This file type cannot be previewed in the browser. Please download the file to view its contents.
+            This file type cannot be previewed in the browser. Please download
+            the file to view its contents.
           </Text>
           <Text size="xs" color="dimmed" mt="sm">
-            Supported preview formats: Images, Videos, Audio, PDFs, Text files, Code files, and Office documents.
+            Supported preview formats: Images, Videos, Audio, PDFs, Text files,
+            Code files, and Office documents.
           </Text>
         </Alert>
       </Stack>

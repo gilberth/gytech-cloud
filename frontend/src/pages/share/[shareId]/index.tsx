@@ -1,9 +1,32 @@
-import { Box, Group, Text, Title, Stack, Card, Image, Badge, Grid, Avatar, Paper, Divider } from "@mantine/core";
+import {
+  Box,
+  Group,
+  Text,
+  Title,
+  Stack,
+  Card,
+  Image,
+  Badge,
+  Grid,
+  Avatar,
+  Paper,
+  Divider,
+} from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { GetServerSidePropsContext } from "next";
 import { useEffect, useState } from "react";
 import { FormattedMessage } from "react-intl";
-import { TbFile, TbFileText, TbPhoto, TbVideo, TbMusic, TbFileZip, TbDownload, TbShare, TbClock } from "react-icons/tb";
+import {
+  TbFile,
+  TbFileText,
+  TbPhoto,
+  TbVideo,
+  TbMusic,
+  TbFileZip,
+  TbDownload,
+  TbShare,
+  TbClock,
+} from "react-icons/tb";
 import moment from "moment";
 import Meta from "../../../components/Meta";
 import DownloadAllButton from "../../../components/share/DownloadAllButton";
@@ -19,17 +42,17 @@ import { byteToHumanSizeString } from "../../../utils/fileSize.util";
 
 // Helper functions for file handling
 const getFileIcon = (fileName: string, size: number = 20) => {
-  const ext = fileName.split('.').pop()?.toLowerCase() || '';
-  
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+
+  if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(ext)) {
     return <TbPhoto size={size} color="#4CAF50" />;
-  } else if (['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv'].includes(ext)) {
+  } else if (["mp4", "avi", "mov", "mkv", "webm", "flv"].includes(ext)) {
     return <TbVideo size={size} color="#FF5722" />;
-  } else if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(ext)) {
+  } else if (["mp3", "wav", "flac", "aac", "ogg"].includes(ext)) {
     return <TbMusic size={size} color="#9C27B0" />;
-  } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+  } else if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) {
     return <TbFileZip size={size} color="#FF9800" />;
-  } else if (['txt', 'md', 'rtf', 'doc', 'docx', 'pdf'].includes(ext)) {
+  } else if (["txt", "md", "rtf", "doc", "docx", "pdf"].includes(ext)) {
     return <TbFileText size={size} color="#2196F3" />;
   } else {
     return <TbFile size={size} color="#757575" />;
@@ -37,25 +60,25 @@ const getFileIcon = (fileName: string, size: number = 20) => {
 };
 
 const isImageFile = (fileName: string) => {
-  const ext = fileName.split('.').pop()?.toLowerCase() || '';
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+  return ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(ext);
 };
 
 const getFileTypeLabel = (fileName: string) => {
-  const ext = fileName.split('.').pop()?.toLowerCase() || '';
-  
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
-    return { label: 'Imagen', color: 'green' };
-  } else if (['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv'].includes(ext)) {
-    return { label: 'Video', color: 'red' };
-  } else if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(ext)) {
-    return { label: 'Audio', color: 'violet' };
-  } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
-    return { label: 'Archivo', color: 'orange' };
-  } else if (['txt', 'md', 'rtf', 'doc', 'docx', 'pdf'].includes(ext)) {
-    return { label: 'Documento', color: 'blue' };
+  const ext = fileName.split(".").pop()?.toLowerCase() || "";
+
+  if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(ext)) {
+    return { label: "Imagen", color: "green" };
+  } else if (["mp4", "avi", "mov", "mkv", "webm", "flv"].includes(ext)) {
+    return { label: "Video", color: "red" };
+  } else if (["mp3", "wav", "flac", "aac", "ogg"].includes(ext)) {
+    return { label: "Audio", color: "violet" };
+  } else if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) {
+    return { label: "Archivo", color: "orange" };
+  } else if (["txt", "md", "rtf", "doc", "docx", "pdf"].includes(ext)) {
+    return { label: "Documento", color: "blue" };
   } else {
-    return { label: 'Archivo', color: 'gray' };
+    return { label: "Archivo", color: "gray" };
   }
 };
 
@@ -143,13 +166,16 @@ const Share = ({ shareId }: { shareId: string }) => {
     getFiles();
   }, []);
 
-  const totalSize = share?.files?.reduce(
-    (total: number, file: { size: string }) => total + parseInt(file.size),
-    0,
-  ) || 0;
+  const totalSize =
+    share?.files?.reduce(
+      (total: number, file: { size: string }) => total + parseInt(file.size),
+      0,
+    ) || 0;
 
-  const imageFiles = share?.files?.filter((file: any) => isImageFile(file.name)) || [];
-  const nonImageFiles = share?.files?.filter((file: any) => !isImageFile(file.name)) || [];
+  const imageFiles =
+    share?.files?.filter((file: any) => isImageFile(file.name)) || [];
+  const nonImageFiles =
+    share?.files?.filter((file: any) => !isImageFile(file.name)) || [];
 
   return (
     <>
@@ -167,13 +193,13 @@ const Share = ({ shareId }: { shareId: string }) => {
                 <TbShare size={24} color="#495057" />
                 <Title order={2}>{share?.name || `Share ${shareId}`}</Title>
               </Group>
-              
+
               {share?.description && (
                 <Text size="md" color="dimmed" mb="sm">
                   {share.description}
                 </Text>
               )}
-              
+
               <Group spacing="lg">
                 <Group spacing="xs">
                   <TbDownload size={16} color="#495057" />
@@ -181,13 +207,13 @@ const Share = ({ shareId }: { shareId: string }) => {
                     {share?.files?.length || 0} archivo(s)
                   </Text>
                 </Group>
-                
+
                 <Group spacing="xs">
                   <Text size="sm" weight={500}>
                     {byteToHumanSizeString(totalSize)}
                   </Text>
                 </Group>
-                
+
                 {share?.expiration && moment(share.expiration).unix() !== 0 && (
                   <Group spacing="xs">
                     <TbClock size={16} color="#495057" />
@@ -215,7 +241,7 @@ const Share = ({ shareId }: { shareId: string }) => {
               <Text>Vista previa de imágenes</Text>
             </Group>
           </Title>
-          
+
           <Grid>
             {imageFiles.slice(0, 6).map((file: any) => (
               <Grid.Col span={4} key={file.id}>
@@ -227,7 +253,7 @@ const Share = ({ shareId }: { shareId: string }) => {
                     fit="cover"
                     withPlaceholder
                     placeholder={getFileIcon(file.name, 40)}
-                    sx={{ cursor: 'pointer' }}
+                    sx={{ cursor: "pointer" }}
                     onClick={() => {
                       showFilePreviewModal(shareId, file, modals);
                     }}
@@ -242,7 +268,7 @@ const Share = ({ shareId }: { shareId: string }) => {
               </Grid.Col>
             ))}
           </Grid>
-          
+
           {imageFiles.length > 6 && (
             <Text size="sm" color="dimmed" mt="sm" align="center">
               +{imageFiles.length - 6} imágenes más
@@ -261,23 +287,25 @@ const Share = ({ shareId }: { shareId: string }) => {
             </Group>
           </Title>
         </Card.Section>
-        
+
         <Card.Section p="md">
           <Stack spacing="sm">
             {share?.files?.map((file: any) => (
-              <Paper key={file.id} p="md" withBorder sx={{ cursor: 'pointer' }}>
+              <Paper key={file.id} p="md" withBorder sx={{ cursor: "pointer" }}>
                 <Group position="apart">
                   <Group spacing="md">
                     <Avatar size="md" radius="sm">
                       {getFileIcon(file.name, 24)}
                     </Avatar>
-                    
+
                     <Box>
-                      <Text weight={500} size="sm">{file.name}</Text>
+                      <Text weight={500} size="sm">
+                        {file.name}
+                      </Text>
                       <Group spacing="xs">
-                        <Badge 
-                          size="xs" 
-                          variant="light" 
+                        <Badge
+                          size="xs"
+                          variant="light"
                           color={getFileTypeLabel(file.name).color}
                         >
                           {getFileTypeLabel(file.name).label}
@@ -288,14 +316,14 @@ const Share = ({ shareId }: { shareId: string }) => {
                       </Group>
                     </Box>
                   </Group>
-                  
+
                   <Group spacing="xs">
                     {shareService.doesFileSupportPreview(file.name) && (
-                      <Badge 
-                        size="xs" 
-                        variant="light" 
+                      <Badge
+                        size="xs"
+                        variant="light"
                         color="blue"
-                        sx={{ cursor: 'pointer' }}
+                        sx={{ cursor: "pointer" }}
                         onClick={(e) => {
                           e.stopPropagation();
                           showFilePreviewModal(shareId, file, modals);
@@ -304,11 +332,11 @@ const Share = ({ shareId }: { shareId: string }) => {
                         Preview
                       </Badge>
                     )}
-                    
-                    <Badge 
-                      size="xs" 
-                      color="green" 
-                      sx={{ cursor: 'pointer' }}
+
+                    <Badge
+                      size="xs"
+                      color="green"
+                      sx={{ cursor: "pointer" }}
                       onClick={async (e) => {
                         e.stopPropagation();
                         await shareService.downloadFile(shareId, file.id);

@@ -27,6 +27,11 @@ export class UploadController {
     private prisma: PrismaService,
   ) {}
 
+  // This endpoint requires the request body to arrive as a raw, unparsed stream
+  // (the default for `curl -T file url`, which sends no Content-Type). Nest's
+  // built-in json/urlencoded body parsers are NOT disabled for this route — a client
+  // sending Content-Type: application/json would have its body consumed before this
+  // handler runs, silently producing an empty uploaded file.
   @Put(":token/:filename")
   @SkipThrottle()
   async upload(

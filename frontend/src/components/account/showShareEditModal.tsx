@@ -1,4 +1,15 @@
-import { Button, Stack, Text, TextInput, Textarea, Box, Group, PasswordInput, Switch, Select } from "@mantine/core";
+import {
+  Button,
+  Stack,
+  Text,
+  TextInput,
+  Textarea,
+  Box,
+  Group,
+  PasswordInput,
+  Switch,
+  Select,
+} from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
@@ -16,7 +27,11 @@ interface ShareEditModalProps {
   onClose: () => void;
 }
 
-const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps) => {
+const ShareEditModal = ({
+  share,
+  onShareUpdated,
+  onClose,
+}: ShareEditModalProps) => {
   const t = translateOutsideContext();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,12 +47,16 @@ const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps)
       name: (value) => {
         // Name is optional, only validate if it has content
         if (!value || value.trim() === "") return null;
-        if (value.length < 3) return "El nombre debe tener al menos 3 caracteres";
-        if (value.length > 30) return "El nombre no puede tener más de 30 caracteres";
+        if (value.length < 3)
+          return "El nombre debe tener al menos 3 caracteres";
+        if (value.length > 30)
+          return "El nombre no puede tener más de 30 caracteres";
         return null;
       },
-      description: (value) => 
-        value && value.length > 512 ? "La descripción no puede tener más de 512 caracteres" : null,
+      description: (value) =>
+        value && value.length > 512
+          ? "La descripción no puede tener más de 512 caracteres"
+          : null,
     },
   });
 
@@ -59,11 +78,11 @@ const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps)
   const handleExpirationChange = (value: string) => {
     setSelectedExpiration(value);
     setShowCustomDate(value === "custom");
-    
+
     if (value !== "custom" && value !== "never") {
       const now = moment();
       let futureDate;
-      
+
       switch (value) {
         case "5-minutes":
           futureDate = now.add(5, "minutes");
@@ -87,7 +106,7 @@ const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps)
           futureDate = now.add(30, "days");
           break;
       }
-      
+
       form.setFieldValue("expiration", futureDate?.toDate() || null);
     } else if (value === "never") {
       form.setFieldValue("expiration", null);
@@ -96,35 +115,40 @@ const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps)
 
   const handleSubmit = async (values: typeof form.values) => {
     setIsLoading(true);
-    
+
     try {
       const updateData: any = {};
-      
+
       // Only include fields that have values or have been explicitly changed
       if (values.name && values.name.trim() !== "") {
         updateData.name = values.name.trim();
       }
-      
+
       if (values.description !== undefined) {
         updateData.description = values.description;
       }
-      
+
       // Always include expiration
-      updateData.expiration = values.expiration ? values.expiration.toISOString() : "never";
-      
+      updateData.expiration = values.expiration
+        ? values.expiration.toISOString()
+        : "never";
+
       // Include password only if it's being set
-      if (values.hasPassword && values.password && values.password.trim() !== "") {
+      if (
+        values.hasPassword &&
+        values.password &&
+        values.password.trim() !== ""
+      ) {
         updateData.security = {
-          password: values.password.trim()
+          password: values.password.trim(),
         };
       }
 
       await shareService.update(share.id, updateData);
-      
+
       toast.success("Share actualizado correctamente");
       onShareUpdated();
       onClose();
-      
     } catch (error) {
       console.error("Error al actualizar share:", error);
       toast.error("Error al actualizar el share");
@@ -177,7 +201,9 @@ const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps)
           <Switch
             label="Proteger con contraseña"
             checked={form.values.hasPassword}
-            onChange={(event) => form.setFieldValue("hasPassword", event.currentTarget.checked)}
+            onChange={(event) =>
+              form.setFieldValue("hasPassword", event.currentTarget.checked)
+            }
             mb={form.values.hasPassword ? "sm" : 0}
           />
           {form.values.hasPassword && (
@@ -190,17 +216,10 @@ const ShareEditModal = ({ share, onShareUpdated, onClose }: ShareEditModalProps)
         </Box>
 
         <Group position="right" mt="md">
-          <Button 
-            variant="subtle" 
-            onClick={onClose}
-            disabled={isLoading}
-          >
+          <Button variant="subtle" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button 
-            type="submit" 
-            loading={isLoading}
-          >
+          <Button type="submit" loading={isLoading}>
             Guardar Cambios
           </Button>
         </Group>

@@ -100,6 +100,8 @@ conda deactivate
 ### Docker Compose Patterns
 
 - `docker-compose.yml` - Production with pre-built image (uses `ghcr.io/gilberth/gytech-cloud:latest`)
+- `docker-compose.local.yml` - Local build from source code (for testing before deploy)
+- `docker-compose.dev.yml` - Additional dev services (e.g. ClamAV), used with `-f docker-compose.yml -f docker-compose.dev.yml`
 - Additional compose files for development and services may need to be created locally
 - ClamAV integration available as documented extension
 
@@ -116,6 +118,9 @@ conda deactivate
 ```bash
 # Production (pre-built image)
 docker compose up -d
+
+# Local build for testing before deploy
+docker compose -f docker-compose.local.yml up -d
 
 # Deploy development image (requires appropriate Docker registry access)
 npm run deploy:dev
@@ -145,6 +150,8 @@ npm run deploy:dev
 - **Quick Share Mode**: Automatic upload with default settings for rapid sharing
 - **File Type Recognition**: Granular document type detection (PDF, Word, Excel, PowerPoint)
 - **Visual Enhancement**: Extension badges, tooltips, and type-specific icons for UX
+- **Public File Access**: `PublicFileController` (`@Controller("f")`) exposes token-based public file access with email notifications to the share creator when a file is previewed/downloaded via `EmailService.sendShareAccessNotification`
+- **Enhanced File Preview**: `FilePreview.tsx` fetches metadata via `/shares/:shareId/files/:fileId/metadata`, supports Markdown/text/PDF preview
 
 ### Database Relationships (Critical)
 
@@ -219,6 +226,7 @@ feature/
 
 ## Critical Files for Understanding
 
+- `.github/copilot-instructions.md` - Complementary AI agent instructions (Spanish) with additional Docker/architecture detail; keep both in sync when updating workflow docs
 - `backend/src/app.module.ts` - Main module configuration
 - `frontend/src/middleware.ts` - Routing and auth logic
 - `backend/prisma/schema.prisma` - Complete data model

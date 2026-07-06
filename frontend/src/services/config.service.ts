@@ -29,7 +29,11 @@ const get = (key: string, configVariables: Config[]): any => {
   if (configVariable.type == "number" || configVariable.type == "filesize")
     return parseInt(value);
   if (configVariable.type == "boolean") return value == "true";
-  if (configVariable.type == "string" || configVariable.type == "text" || configVariable.type == "color")
+  if (
+    configVariable.type == "string" ||
+    configVariable.type == "text" ||
+    configVariable.type == "color"
+  )
     return value;
   if (configVariable.type == "timespan") return stringToTimespan(value);
 };

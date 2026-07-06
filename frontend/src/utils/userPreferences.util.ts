@@ -12,7 +12,9 @@ const defaultPreferences = [
 const get = (key: string) => {
   if (typeof window !== "undefined") {
     try {
-      const preferences = JSON.parse(localStorage.getItem("preferences") ?? "{}");
+      const preferences = JSON.parse(
+        localStorage.getItem("preferences") ?? "{}",
+      );
       return (
         preferences[key] ??
         defaultPreferences.find((p) => p.key == key)?.value ??
@@ -30,7 +32,9 @@ const get = (key: string) => {
 const set = (key: string, value: string) => {
   if (typeof window !== "undefined") {
     try {
-      const preferences = JSON.parse(localStorage.getItem("preferences") ?? "{}");
+      const preferences = JSON.parse(
+        localStorage.getItem("preferences") ?? "{}",
+      );
       preferences[key] = value;
       localStorage.setItem("preferences", JSON.stringify(preferences));
     } catch (error) {

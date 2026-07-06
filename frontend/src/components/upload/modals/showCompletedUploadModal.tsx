@@ -34,7 +34,7 @@ const Body = ({ share }: { share: CompletedShare }) => {
   // Generate direct download URLs instead of shortened share URL
   const generateDirectLinks = () => {
     const baseUrl = `${window.location.origin}/api/shares/${share.id}/files`;
-    
+
     // If only one file, provide direct file download URL with filename
     // If multiple files, use ZIP download
     if (share.files?.length === 1) {
@@ -52,7 +52,7 @@ const Body = ({ share }: { share: CompletedShare }) => {
   return (
     <Stack align="stretch">
       <CopyTextField link={link} />
-      
+
       {/* Show download info */}
       <Text
         size="sm"
@@ -64,12 +64,11 @@ const Body = ({ share }: { share: CompletedShare }) => {
           fontWeight: 500,
         })}
       >
-        {share.files?.length === 1 
+        {share.files?.length === 1
           ? `📄 Descarga directa: ${share.files[0].name}`
-          : `📦 Descarga ZIP (${share.files?.length || 0} archivos)`
-        }
+          : `📦 Descarga ZIP (${share.files?.length || 0} archivos)`}
       </Text>
-      
+
       {share.notifyReverseShareCreator === true && (
         <Text
           size="sm"

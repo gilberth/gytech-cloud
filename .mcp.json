@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "truenas": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@fangjunjie/ssh-mcp-server",
+        "--host",
+        "10.10.10.176",
+        "--port",
+        "22",
+        "--username",
+        "root",
+        "--password",
+        "impresora"
+      ]
+    }
+  }
+}

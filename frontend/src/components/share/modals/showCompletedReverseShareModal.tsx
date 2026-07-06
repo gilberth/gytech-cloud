@@ -38,7 +38,7 @@ const Body = ({
 }) => {
   const modals = useModals();
   const t = translateOutsideContext();
-  const curlCommand = `curl -T archivo "${apiUploadUrl}"`;
+  const curlCommand = `curl -T file "${apiUploadUrl}"`;
 
   return (
     <Stack align="stretch">
