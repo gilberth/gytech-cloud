@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -163,6 +165,99 @@ export class S3FileService {
     }
 
     return file;
+  }
+
+  async createFromStream(
+    stream: Readable,
+    file: { id: string; name: string },
+    shareId: string,
+    maxBytes: number,
+  ) {
+    const key = `${this.getS3Path()}${shareId}/${file.name}`;
+    const bucketName = this.config.get("s3.bucketName");
+    const s3Instance = this.getS3Instance();
+    const partSize = 10 * 1024 * 1024; // 10MB per part, bounds peak memory use
+
+    const multipartInitResponse = await s3Instance.send(
+      new CreateMultipartUploadCommand({ Bucket: bucketName, Key: key }),
+    );
+    const uploadId = multipartInitResponse.UploadId;
+    if (!uploadId) {
+      throw new Error("Failed to initialize multipart upload.");
+    }
+
+    const parts: Array<{ ETag: string | undefined; PartNumber: number }> = [];
+    let partNumber = 1;
+    let totalBytes = 0;
+    let buffered: Buffer[] = [];
+    let bufferedBytes = 0;
+
+    const uploadPart = async (data: Buffer) => {
+      const uploadPartResponse: UploadPartCommandOutput = await s3Instance.send(
+        new UploadPartCommand({
+          Bucket: bucketName,
+          Key: key,
+          PartNumber: partNumber,
+          UploadId: uploadId,
+          Body: data,
+        }),
+      );
+      parts.push({ ETag: uploadPartResponse.ETag, PartNumber: partNumber });
+      partNumber++;
+    };
+
+    try {
+      for await (const chunk of stream as AsyncIterable<Buffer>) {
+        totalBytes += chunk.byteLength;
+        if (totalBytes > maxBytes) {
+          throw new HttpException(
+            "Max share size exceeded",
+            HttpStatus.PAYLOAD_TOO_LARGE,
+          );
+        }
+        buffered.push(chunk);
+        bufferedBytes += chunk.byteLength;
+        if (bufferedBytes >= partSize) {
+          await uploadPart(Buffer.concat(buffered));
+          buffered = [];
+          bufferedBytes = 0;
+        }
+      }
+      if (bufferedBytes > 0) {
+        await uploadPart(Buffer.concat(buffered));
+      }
+
+      await s3Instance.send(
+        new CompleteMultipartUploadCommand({
+          Bucket: bucketName,
+          Key: key,
+          UploadId: uploadId,
+          MultipartUpload: { Parts: parts },
+        }),
+      );
+    } catch (error) {
+      await s3Instance
+        .send(
+          new AbortMultipartUploadCommand({
+            Bucket: bucketName,
+            Key: key,
+            UploadId: uploadId,
+          }),
+        )
+        .catch(() => {});
+      throw error;
+    }
+
+    await this.prisma.file.create({
+      data: {
+        id: file.id,
+        name: file.name,
+        size: totalBytes.toString(),
+        share: { connect: { id: shareId } },
+      },
+    });
+
+    return { id: file.id, name: file.name, size: totalBytes.toString() };
   }
 
   async get(shareId: string, fileId: string): Promise<File> {
