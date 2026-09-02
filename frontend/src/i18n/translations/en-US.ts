@@ -523,6 +523,9 @@ export default {
   "admin.config.share.auto-open-share-modal": "Auto open create share modal",
   "admin.config.share.auto-open-share-modal.description":
     "The share creation modal automatically appears when a user selects files, eliminating the need to manually click the button.",
+  "admin.config.share.auto-upload-files": "Upload files automatically",
+  "admin.config.share.auto-upload-files.description":
+    "Creates the share and starts uploading immediately after files are selected, without opening the modal or requiring another click.",
 
   "admin.config.smtp.enabled": "Enable",
   "admin.config.smtp.enabled.description":

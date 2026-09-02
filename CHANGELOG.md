@@ -22,6 +22,8 @@
 
 ### Bug Fixes
 
+* **admin:** update button now points to the GYTECH Cloud releases page
+* **i18n:** add missing labels for the automatic file upload setting
 * **upload:** failed chunks retry individually with exponential backoff instead of restarting entire file
 * **file:** removed unnecessary Buffer.from(data, "base64") copy in file upload pipeline
 * **upload:** fixed missing `await` on Promise.all in upload page
