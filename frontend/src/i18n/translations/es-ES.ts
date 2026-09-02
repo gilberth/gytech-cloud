@@ -185,9 +185,14 @@ export default {
   "account.reverseShares.table.shares": "Compartidos",
   "account.reverseShares.table.remaining": "Usos restantes",
   "account.reverseShares.table.max-size": "Tamaño máximo del compartido",
+  "account.reverseShares.table.uploaded-size": "Tamaño subido",
   "account.reverseShares.table.expires": "Expira en",
   "account.reverseShares.modal.reverse-share-link": "Enlace de compartición inversa",
-  "account.reverseShares.modal.curl-command.label": "Comando curl (para subir desde una terminal, sin necesidad de navegador)",
+  "account.reverseShares.modal.curl-command.label": "Subir desde una terminal",
+  "account.reverseShares.modal.curl-command.description": "Reemplaza la ruta de ejemplo por la ubicación del archivo que deseas subir.",
+  "account.reverseShares.modal.curl-command.posix": "Linux / macOS",
+  "account.reverseShares.modal.curl-command.powershell": "Windows PowerShell",
+  "account.reverseShares.modal.curl-command.powershell-description": "Incluye --ssl-revoke-best-effort para equipos donde Windows no puede consultar el servidor de revocación del certificado.",
   "account.reverseShares.modal.delete.title": "Eliminar compartición inversa",
   "account.reverseShares.modal.delete.description": "¿Seguro que quieres eliminar esta compartición inversa? Si lo haces, todos los archivos asociados también serán eliminados.",
   // END /account/reverseShares
@@ -242,6 +247,7 @@ export default {
   // Dropzone.tsx
   "upload.dropzone.title": "Subir archivos",
   "upload.dropzone.description": "Arrastra y suelta los archivos aquí para crear tu enlace compartido. Solo aceptamos archivos de hasta {maxSize} en total.",
+  "upload.dropzone.clipboard-hint": "También puedes pegar una imagen desde el portapapeles con Ctrl+V (Cmd+V en Mac).",
   "upload.dropzone.notify.file-too-big": "Tus archivos exceden el tamaño máximo de {maxSize}.",
   // FileList.tsx
   "upload.filelist.name": "Nombre",

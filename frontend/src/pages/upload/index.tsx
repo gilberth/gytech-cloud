@@ -1,17 +1,10 @@
-import {
-  Button,
-  Group,
-  Stack,
-  Text,
-  Paper,
-  useMantineTheme,
-} from "@mantine/core";
+import { Button, Group } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { cleanNotifications } from "@mantine/notifications";
 import pLimit from "p-limit";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FormattedMessage } from "react-intl";
-import { TbClipboard, TbShare } from "react-icons/tb";
+import { TbShare } from "react-icons/tb";
 import Meta from "../../components/Meta";
 import Dropzone from "../../components/upload/Dropzone";
 import FileList from "../../components/upload/FileList";
@@ -75,13 +68,10 @@ const Upload = ({
   const modals = useModals();
   const router = useRouter();
   const t = useTranslate();
-  const theme = useMantineTheme();
-
   const { user } = useUser();
   const config = useConfig();
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [isUploading, setisUploading] = useState(false);
-  const [pasteAreaFocused, setPasteAreaFocused] = useState(false);
 
   useConfirmLeave({
     message: t("upload.notify.confirm-leave"),
@@ -335,7 +325,7 @@ const Upload = ({
   // Add paste event listener
   useEffect(() => {
     const handleGlobalPaste = (e: ClipboardEvent) => {
-      // Only handle paste if the paste area is focused or no input is focused
+      // Handle image paste whenever the user is not editing a text field.
       const activeElement = document.activeElement;
       const isInputFocused =
         activeElement &&
@@ -343,14 +333,14 @@ const Upload = ({
           activeElement.tagName === "TEXTAREA" ||
           (activeElement as HTMLElement).contentEditable === "true");
 
-      if (!isInputFocused || pasteAreaFocused) {
+      if (!isInputFocused) {
         handlePaste(e);
       }
     };
 
     document.addEventListener("paste", handleGlobalPaste);
     return () => document.removeEventListener("paste", handleGlobalPaste);
-  }, [handlePaste, pasteAreaFocused]);
+  }, [handlePaste]);
 
   const handleQuickShare = async () => {
     if (files.length === 0) return;
@@ -398,84 +388,6 @@ const Upload = ({
         </Group>
       )}
 
-      {/* Clipboard paste area */}
-      <Stack spacing="md" mb="md">
-        <Paper
-          p="md"
-          withBorder
-          sx={(theme) => ({
-            backgroundColor:
-              theme.colorScheme === "dark"
-                ? pasteAreaFocused
-                  ? theme.colors.dark[6]
-                  : theme.colors.dark[7]
-                : pasteAreaFocused
-                  ? theme.colors.gray[0]
-                  : theme.colors.gray[1],
-            borderColor:
-              theme.colorScheme === "dark"
-                ? pasteAreaFocused
-                  ? theme.colors.dark[4]
-                  : theme.colors.dark[5]
-                : pasteAreaFocused
-                  ? theme.colors.gray[4]
-                  : theme.colors.gray[3],
-            borderStyle: "dashed",
-            borderWidth: 1,
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-            "&:hover": {
-              backgroundColor:
-                theme.colorScheme === "dark"
-                  ? theme.colors.dark[6]
-                  : theme.colors.gray[0],
-              borderColor:
-                theme.colorScheme === "dark"
-                  ? theme.colors.dark[4]
-                  : theme.colors.gray[4],
-            },
-          })}
-          tabIndex={0}
-          onFocus={() => setPasteAreaFocused(true)}
-          onBlur={() => setPasteAreaFocused(false)}
-          onClick={() => {
-            // Focus the element to enable paste detection
-            const element = document.activeElement as HTMLElement;
-            if (element) {
-              element.focus();
-            }
-          }}
-        >
-          <Group spacing="sm" position="center">
-            <TbClipboard
-              size={24}
-              color={
-                theme.colorScheme === "dark"
-                  ? pasteAreaFocused
-                    ? theme.colors.dark[3]
-                    : theme.colors.dark[2]
-                  : pasteAreaFocused
-                    ? theme.colors.gray[6]
-                    : theme.colors.gray[5]
-              }
-            />
-            <Stack spacing={4} align="center">
-              <Text
-                size="sm"
-                weight={500}
-                color={pasteAreaFocused ? undefined : "dimmed"}
-              >
-                Pegar imágenes desde el portapapeles
-              </Text>
-              <Text size="xs" color="dimmed">
-                Haz clic aquí y presiona Ctrl+V (Cmd+V en Mac) para pegar
-                imágenes
-              </Text>
-            </Stack>
-          </Group>
-        </Paper>
-      </Stack>
-
       <Dropzone
         title={
           !autoOpenCreateUploadModal && files.length > 0
@@ -483,6 +395,7 @@ const Upload = ({
             : undefined
         }
         maxShareSize={maxShareSize}
+        pasteHint={t("upload.dropzone.clipboard-hint")}
         onFilesChanged={handleDropzoneFilesChanged}
         isUploading={isUploading}
       />

@@ -5,6 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/utils/curlCommand.util.spec.mjs",
     "lint": "next lint",
     "format": "prettier --end-of-line=auto --write \"src/**/*.ts*\""
   },

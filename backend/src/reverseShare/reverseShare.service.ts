@@ -39,16 +39,11 @@ export class ReverseShareService {
 
     const globalMaxShareSize = this.config.get("share.maxSize");
 
-    if (globalMaxShareSize < data.maxShareSize)
-      throw new BadRequestException(
-        `Max share size can't be greater than ${globalMaxShareSize} bytes.`,
-      );
-
     const reverseShare = await this.prisma.reverseShare.create({
       data: {
         shareExpiration: expirationDate,
         remainingUses: data.maxUseCount,
-        maxShareSize: data.maxShareSize,
+        maxShareSize: globalMaxShareSize.toString(),
         sendEmailNotification: data.sendEmailNotification,
         simplified: data.simplified,
         publicAccess: data.publicAccess,
@@ -78,10 +73,21 @@ export class ReverseShareService {
       orderBy: {
         shareExpiration: "desc",
       },
-      include: { shares: { include: { creator: true } } },
+      include: { shares: { include: { creator: true, files: true } } },
     });
 
-    return reverseShares;
+    return reverseShares.map((reverseShare) => ({
+      ...reverseShare,
+      uploadedSize: reverseShare.shares.reduce(
+        (shareTotal, share) =>
+          shareTotal +
+          share.files.reduce(
+            (fileTotal, file) => fileTotal + parseInt(file.size),
+            0,
+          ),
+        0,
+      ),
+    }));
   }
 
   async isValid(reverseShareToken: string) {

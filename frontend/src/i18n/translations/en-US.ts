@@ -223,11 +223,17 @@ export default {
   "account.reverseShares.table.shares": "Shares",
   "account.reverseShares.table.remaining": "Remaining uses",
   "account.reverseShares.table.max-size": "Max share size",
+  "account.reverseShares.table.uploaded-size": "Uploaded size",
   "account.reverseShares.table.expires": "Expires at",
 
   "account.reverseShares.modal.reverse-share-link": "Reverse share link",
-  "account.reverseShares.modal.curl-command.label":
-    "Curl command (for uploading from a terminal, no browser needed)",
+  "account.reverseShares.modal.curl-command.label": "Upload from a terminal",
+  "account.reverseShares.modal.curl-command.description":
+    "Replace the example path with the location of the file you want to upload.",
+  "account.reverseShares.modal.curl-command.posix": "Linux / macOS",
+  "account.reverseShares.modal.curl-command.powershell": "Windows PowerShell",
+  "account.reverseShares.modal.curl-command.powershell-description":
+    "Includes --ssl-revoke-best-effort for computers where Windows cannot reach the certificate revocation server.",
 
   "account.reverseShares.modal.delete.title": "Delete reverse share",
   "account.reverseShares.modal.delete.description":
@@ -304,6 +310,8 @@ export default {
   "upload.dropzone.title": "Upload files",
   "upload.dropzone.description":
     "Drag'n'drop files here to start your share. We only accept files up to {maxSize} in total.",
+  "upload.dropzone.clipboard-hint":
+    "You can also paste an image from the clipboard with Ctrl+V (Cmd+V on Mac).",
   "upload.dropzone.notify.file-too-big":
     "Your files exceed the maximum share size of {maxSize}.",
 

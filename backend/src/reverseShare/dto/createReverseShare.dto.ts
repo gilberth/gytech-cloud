@@ -5,9 +5,6 @@ export class CreateReverseShareDTO {
   sendEmailNotification: boolean;
 
   @IsString()
-  maxShareSize: string;
-
-  @IsString()
   shareExpiration: string;
 
   @Min(1)

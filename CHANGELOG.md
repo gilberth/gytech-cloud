@@ -9,7 +9,11 @@
 
 ### Features
 
-* **upload:** new `PUT /api/upload/:token/:filename` endpoint lets you upload a file with a single `curl -T file "<apiUploadUrl>"` command using an existing Reverse Share token — no login, no browser, no script needed
+* **reverseShare:** reverse shares now automatically use the server-wide upload size limit instead of requiring a separate size in the creation modal
+* **reverseShare:** terminal upload modal now shows explicit Linux/macOS and PowerShell commands with clear file-path placeholders and Windows certificate-revocation guidance
+* **upload:** clipboard image paste is now presented inside the main upload area instead of as a separate upload block
+* **reverseShare:** account table now shows the accumulated size of uploaded files instead of the server upload limit
+* **upload:** new `PUT /api/upload/:token/:filename` endpoint lets you upload a file with a single `curl -T "ruta/al/archivo.zip" "<apiUploadUrl>"` command using an existing Reverse Share token — no login, no browser, no script needed
 * **reverseShare:** creation response and UI now include a ready-to-copy curl command (`apiUploadUrl`) alongside the existing web link
 * **upload:** horizontal progress bar with percentage text replaces tiny ring indicator
 * **upload:** ETA countdown shows estimated time remaining during uploads
@@ -1114,4 +1118,3 @@
 * system test github action ([a2c9755](https://github.com/stonith404/pingvin-share/commit/a2c9755756932086c63a282330f80e410137b1d9))
 * upload volume path ([7522221](https://github.com/stonith404/pingvin-share/commit/7522221ee163cb0bd6144e7b924c77065f223fb9))
 * wrong environment configuration for `ALLOW_REGISTRATION` ([759db40](https://github.com/stonith404/pingvin-share/commit/759db40ac9f42ff71a795ceec521a7f9531d71c9))
-

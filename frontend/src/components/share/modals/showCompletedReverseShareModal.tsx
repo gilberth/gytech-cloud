@@ -1,8 +1,12 @@
-import { Button, Stack } from "@mantine/core";
+import { Button, Stack, Text } from "@mantine/core";
 import { useModals } from "@mantine/modals";
 import { ModalsContextProps } from "@mantine/modals/lib/context";
 import { FormattedMessage } from "react-intl";
 import { translateOutsideContext } from "../../../hooks/useTranslate.hook";
+import {
+  buildPosixCurlCommand,
+  buildPowerShellCurlCommand,
+} from "../../../utils/curlCommand.util";
 import CopyTextField from "../../upload/CopyTextField";
 
 const showCompletedReverseShareModal = (
@@ -38,17 +42,41 @@ const Body = ({
 }) => {
   const modals = useModals();
   const t = translateOutsideContext();
-  const curlCommand = `curl -T file "${apiUploadUrl}"`;
+  const posixCurlCommand = buildPosixCurlCommand(apiUploadUrl);
+  const powerShellCurlCommand = buildPowerShellCurlCommand(apiUploadUrl);
 
   return (
     <Stack align="stretch">
       <CopyTextField link={link} />
 
-      <CopyTextField
-        link={curlCommand}
-        label={t("account.reverseShares.modal.curl-command.label")}
-        hideOpenLink
-      />
+      <div>
+        <Text mb="xs" weight={500}>
+          {t("account.reverseShares.modal.curl-command.label")}
+        </Text>
+        <Text mb="sm" size="sm" color="dimmed">
+          {t("account.reverseShares.modal.curl-command.description")}
+        </Text>
+
+        <Stack spacing="sm">
+          <CopyTextField
+            link={posixCurlCommand}
+            label={t("account.reverseShares.modal.curl-command.posix")}
+            hideOpenLink
+          />
+          <div>
+            <CopyTextField
+              link={powerShellCurlCommand}
+              label={t("account.reverseShares.modal.curl-command.powershell")}
+              hideOpenLink
+            />
+            <Text mt={4} size="xs" color="dimmed">
+              {t(
+                "account.reverseShares.modal.curl-command.powershell-description",
+              )}
+            </Text>
+          </div>
+        </Stack>
+      </div>
 
       <Button
         onClick={() => {

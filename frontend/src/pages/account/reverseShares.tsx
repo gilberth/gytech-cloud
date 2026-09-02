@@ -107,7 +107,7 @@ const MyShares = () => {
                   <FormattedMessage id="account.reverseShares.table.remaining" />
                 </th>
                 <th>
-                  <FormattedMessage id="account.reverseShares.table.max-size" />
+                  <FormattedMessage id="account.reverseShares.table.uploaded-size" />
                 </th>
                 <th>
                   <FormattedMessage id="account.reverseShares.table.expires" />
@@ -179,7 +179,9 @@ const MyShares = () => {
                   </td>
                   <td>{reverseShare.remainingUses}</td>
                   <td>
-                    {byteToHumanSizeString(parseInt(reverseShare.maxShareSize))}
+                    {reverseShare.uploadedSize === 0
+                      ? "0 B"
+                      : byteToHumanSizeString(reverseShare.uploadedSize)}
                   </td>
                   <td>
                     {moment(reverseShare.shareExpiration).unix() === 0

@@ -36,11 +36,13 @@ const Dropzone = ({
   title,
   isUploading,
   maxShareSize,
+  pasteHint,
   onFilesChanged,
 }: {
   title?: string;
   isUploading: boolean;
   maxShareSize: number;
+  pasteHint?: string;
   onFilesChanged: (files: FileUpload[]) => void;
 }) => {
   const t = useTranslate();
@@ -88,6 +90,11 @@ const Dropzone = ({
               values={{ maxSize: byteToHumanSizeString(maxShareSize) }}
             />
           </Text>
+          {pasteHint && (
+            <Text align="center" size="xs" mt="xs" color="dimmed">
+              {pasteHint}
+            </Text>
+          )}
         </div>
       </MantineDropzone>
       <Center>

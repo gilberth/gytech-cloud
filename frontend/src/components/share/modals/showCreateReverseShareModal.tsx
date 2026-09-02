@@ -23,7 +23,6 @@ import shareService from "../../../services/share.service";
 import { Timespan } from "../../../types/timespan.type";
 import { getExpirationPreview } from "../../../utils/date.util";
 import toast from "../../../utils/toast.util";
-import FileSizeInput from "../../core/FileSizeInput";
 import showCompletedReverseShareModal from "./showCompletedReverseShareModal";
 
 const showCreateReverseShareModal = (
@@ -59,7 +58,6 @@ const Body = ({
 
   const form = useForm({
     initialValues: {
-      maxShareSize: 104857600,
       maxUseCount: 1,
       sendEmailNotification: false,
       expiration_num: 1,
@@ -111,7 +109,6 @@ const Body = ({
     shareService
       .createReverseShare(
         values.expiration_num + values.expiration_unit,
-        values.maxShareSize,
         values.maxUseCount,
         values.sendEmailNotification,
         values.simplified,
@@ -213,11 +210,6 @@ const Body = ({
               )}
             </Text>
           </div>
-          <FileSizeInput
-            label={t("account.reverseShares.modal.max-size.label")}
-            value={form.values.maxShareSize}
-            onChange={(number) => form.setFieldValue("maxShareSize", number)}
-          />
           <NumberInput
             min={1}
             max={1000}
